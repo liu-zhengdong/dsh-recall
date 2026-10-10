@@ -8,6 +8,9 @@ importers:
 
   .:
     dependencies:
+      '@deepseek-ai/schemastery':
+        specifier: ~3.18.4
+        version: 3.18.4
       zod:
         specifier: 4.4.3
         version: 4.4.3
@@ -36,9 +39,6 @@ importers:
       '@deepseek-ai/dsh-tools':
         specifier: 0.2.0-rc.2
         version: 0.2.0-rc.2(c6e351a6a6cfd1c2a664558bffcd410d)
-      '@deepseek-ai/schemastery':
-        specifier: 3.18.4
-        version: 3.18.4
       '@types/node':
         specifier: 22.19.19
         version: 22.19.19
