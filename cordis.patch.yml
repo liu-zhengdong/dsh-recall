@@ -1,0 +1,13 @@
+# 组合包补丁层：profile 的 dsh.profile.bundles 里列出本包时应用。
+- insert:
+    - id: run-archive
+      name: dsh-run-archive
+      config:
+        # 摘要的目标长度（Unicode 字符数），上限 2000。
+        overviewLimit: 200
+        # 置 true 则完全不生成摘要，只归档 Run 本身。
+        noSummary: false
+        # 摘要模型的 provider 与 model；两项必须同时填写才生效。
+        # 都留空时回落到当前会话自己的模型路由。
+        summaryProvider: ''
+        summaryModel: ''
