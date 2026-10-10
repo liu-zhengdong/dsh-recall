@@ -78,7 +78,9 @@ dsh --profile <profile> --dump-config | grep -B2 -A6 dsh-recall
 ```
 
 > 本包未发布到 npm，`add dsh-recall` 会失败。
-> `prepare` 脚本会在安装时自动跑 `tsc` 生成 `lib/`。
+> 仓库直接带 `lib/` 构建产物，安装时不跑构建脚本（pnpm 会拦下 git 包的
+> `prepare`，放行键还绑 commit hash，因此不采用那条路）。改源码后跑
+> `npm run build` 并把 `lib/` 一起提交。
 
 ## 配置
 
