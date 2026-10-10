@@ -74,7 +74,7 @@ export function messagePreview(
   return joined === "" ? "[无正文，按 ID 展开]" : joined;
 }
 
-/** 全文投影：按顺序拼接各块，供 get_message_detail 使用。 */
+/** 全文投影：按顺序拼接各块，供 recall_message 使用。 */
 export function messageText(
   message: MessageLike,
   toolName: string | undefined,

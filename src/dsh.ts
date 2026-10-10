@@ -148,6 +148,8 @@ export interface PluginContextLike {
   storageDomain?: DomainFacilityLike;
   logger?: LoggerLike;
   get(name: string): unknown;
+  /** 向其他包暴露一个服务；Remote 桥用它注册 typertRemote 绑定。 */
+  provide(key: string, value: unknown): unknown;
   on(event: string, listener: (...args: never[]) => void, options?: { global?: boolean }): () => boolean;
   inject(names: string[], callback: (scope: PluginContextLike) => unknown): unknown;
   effect(callback: () => unknown, label?: string): unknown;

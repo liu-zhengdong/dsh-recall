@@ -96,14 +96,14 @@ export class RunRecorder {
       );
       this.onArchived?.(record, boundary);
       this.logger?.debug?.(
-        "run-archive 已归档 r%d（turn %d）",
+        "recall 已归档 r%d（turn %d）",
         record.ordinal,
         record.turn,
       );
     } catch (error) {
       const message = preview(String((error as Error)?.message ?? error), 240);
       this.lastError = message;
-      this.logger?.warn?.("run-archive 归档失败：%s", message);
+      this.logger?.warn?.("recall 归档失败：%s", message);
     }
   }
 

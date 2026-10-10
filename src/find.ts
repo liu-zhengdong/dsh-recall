@@ -1,5 +1,5 @@
 /**
- * find_run 与 get_message_detail 的检索实现。
+ * recall 与 recall_message 的检索实现。
  *
  * 正文不在本插件里：`ctx.sessionQuery.readSession(sessionId)` 回读宿主自己的
  * 会话日志，`foldRuns` 按 turn 切分。每次调用都现读，不缓存 —— 归档条目本身
@@ -45,16 +45,30 @@ export type DetailArgs = {
 
 export type Choice = { id: string; label: string };
 
+/** 一条消息的结构化摘要；readRun 结果里与 text 并存，供 UI 直接渲染。 */
+export type MessageSummary = {
+  id: string;
+  position: number;
+  role: string;
+  toolName?: string;
+  preview: string;
+};
+
 export type FindResult = {
   text: string;
   displayText: string;
   next?: FindArgs;
   choices: Choice[];
+  /** 仅 readRun（按 id 展开 Run）时返回：本页消息的结构化列表。 */
+  messages?: MessageSummary[];
 };
 
 export type DetailResult = {
   text: string;
   next?: DetailArgs;
+  /** 未加分隔线包装的正文本页，供 UI 直接展示。 */
+  body?: string;
+  role?: string;
 };
 
 /** 游标就是下一页的参数本身；不透明化没有收益，反而挡住手工续页。 */
@@ -147,7 +161,7 @@ export class Archive {
       return boundary;
     } catch (error) {
       this.logger?.warn?.(
-        "run-archive 读取会话 %s 失败：%o",
+        "recall 读取会话 %s 失败：%o",
         record.sessionId,
         error,
       );
@@ -167,7 +181,7 @@ export class Archive {
       return foldRuns(snapshot.events).find((run) => run.turn === turn);
     } catch (error) {
       this.logger?.warn?.(
-        "run-archive 读取会话 %s 失败：%o",
+        "recall 读取会话 %s 失败：%o",
         sessionId,
         error,
       );
@@ -272,7 +286,7 @@ export class Archive {
         haystack.slice(Math.max(0, index - 80)).replaceAll("\n", " "),
         240,
       );
-      return `\n命中 ${ref} · ${snippet}\nget_message_detail({"id":"${ref}"})`;
+      return `\n命中 ${ref} · ${snippet}\nrecall_message({"id":"${ref}"})`;
     }
     return undefined;
   }
@@ -289,7 +303,7 @@ export class Archive {
       label: `${record.startedAt} · ${preview(record.goal || "无用户文本", 120)}`,
     }));
     const parts = records.map(
-      (record) => `${header(record)}\nfind_run({"id":"r${record.ordinal}"})`,
+      (record) => `${header(record)}\nrecall({"id":"r${record.ordinal}"})`,
     );
     const text = parts.join("\n\n");
     const next = more ? this.nextPage(args, offset) : undefined;
@@ -321,15 +335,24 @@ export class Archive {
       };
     const at = args.cursor === undefined ? 0 : this.cursorOffset(args.cursor);
     const lines: string[] = [];
+    const summaries: MessageSummary[] = [];
     let index = at;
     let bytes = 0;
     for (; index < boundary.messages.length; index++) {
       const entry = boundary.messages[index] as RunMessage;
-      const line = `${entry.position}. ${entry.role}${entry.toolName ? ` ${entry.toolName}` : ""} · r${record.ordinal}/m${entry.position}\n${preview(messagePreview(entry.message, entry.toolName), 800)}`;
+      const text = preview(messagePreview(entry.message, entry.toolName), 800);
+      const line = `${entry.position}. ${entry.role}${entry.toolName ? ` ${entry.toolName}` : ""} · r${record.ordinal}/m${entry.position}\n${text}`;
       const size = Buffer.byteLength(line, "utf8");
       if (bytes + size > OUTPUT_BYTES && lines.length > 0) break;
       lines.push(line);
       bytes += size;
+      summaries.push({
+        id: `r${record.ordinal}/m${entry.position}`,
+        position: entry.position,
+        role: entry.role,
+        ...(entry.toolName ? { toolName: entry.toolName } : {}),
+        preview: text,
+      });
     }
     const body = lines.join("\n\n");
     const next =
@@ -344,6 +367,7 @@ export class Archive {
         id: `r${record.ordinal}/m${entry.position}`,
         label: `${entry.role}${entry.toolName ? ` ${entry.toolName}` : ""}`,
       })),
+      messages: summaries,
     };
   }
 
@@ -377,8 +401,8 @@ export class Archive {
       end < body.length
         ? { id: args.id, ...(raw ? { format: "raw" as const } : {}), cursor: encodeCursor({ offset: end }) }
         : undefined;
-    const text = `${args.id} · ${role} · ${format}\n正文位于分隔线之间，按顺序拼接各页即可还原。\n---\n${part}\n---\n${next ? `继续：get_message_detail(${JSON.stringify(next)})` : "[已读完]"}`;
-    return { text, ...(next ? { next } : {}) };
+    const text = `${args.id} · ${role} · ${format}\n正文位于分隔线之间，按顺序拼接各页即可还原。\n---\n${part}\n---\n${next ? `继续：recall_message(${JSON.stringify(next)})` : "[已读完]"}`;
+    return { text, ...(next ? { next } : {}), body: part, role };
   }
 
   /** 解析 `r12/m3`、`m3`（本会话内不唯一，故需 Run 前缀）或消息 UUID。 */
@@ -405,7 +429,7 @@ export class Archive {
       );
       if (entry !== undefined) return { record, entry };
     }
-    throw new Error(`找不到消息 ${id}；请先用 find_run 取回消息 ID。`);
+    throw new Error(`找不到消息 ${id}；请先用 recall 取回消息 ID。`);
   }
 }
 

@@ -1,5 +1,5 @@
 /**
- * dsh-run-archive：把 DSH 的每个 turn 归档成一条 Run，并让 Agent 检索自己的执行历史。
+ * dsh-recall：把 DSH 的每个 turn 归档成一条 Run，并让 Agent 检索自己的执行历史。
  *
  * 三条边界：
  * - **run 边界** = 一个 turn。宿主保证 `turn/start` 与 `turn/end` 成对且后者必发，
@@ -12,7 +12,7 @@
  * 官方包只随 DSH 安装分发，把它们的运行时版本写进插件会锁死兼容性。
  */
 import Schema from "@deepseek-ai/schemastery";
-import { runRunsCommand, RUNS_COMMAND_DESCRIPTION } from "./command.ts";
+import { runRunsCommand, RECALL_COMMAND_DESCRIPTION } from "./command.ts";
 import { Config, normalizeConfig, type PluginConfig } from "./config.ts";
 import { runArchiveDomain } from "./domain.ts";
 import type {
@@ -30,15 +30,16 @@ import type {
 import type { RunBoundary } from "./events.ts";
 import { Archive } from "./find.ts";
 import { RunRecorder } from "./recorder.ts";
+import { installRemote } from "./remote.ts";
 import { RunStore } from "./store.ts";
 import { Summarizer, type SummaryRoute } from "./summary.ts";
 import {
-  createDeleteTool,
-  createDetailTool,
-  createFindRunTool,
+  createForgetTool,
+  createRecallMessageTool,
+  createRecallTool,
 } from "./tools.ts";
 
-export const name = "dsh-run-archive";
+export const name = "dsh-recall";
 
 /** 归档域与正文回读是硬依赖；其余服务缺失时降级而不是不加载。 */
 export const inject = ["storageDomain", "sessionQuery"];
@@ -90,12 +91,19 @@ export function apply(
       );
     registerTools(ctx, () => runtime, () => failure, value);
     registerCommand(ctx, () => runtime, () => failure, current, value);
+    // Web 设置页的搜索界面走这条桥；服务缺失时注册失败只会降级，
+    // 不影响归档与模型工具。
+    try {
+      installRemote(ctx, () => runtime, () => failure);
+    } catch (error) {
+      logger?.warn?.("Remote 桥注册失败（设置页搜索不可用）：%s", String((error as Error)?.message ?? error));
+    }
     return value;
   });
 
   void ready.catch((error) => {
     failure = String((error as Error)?.message ?? error);
-    logger?.error?.("run-archive 初始化失败：%s", failure);
+    logger?.error?.("recall 初始化失败：%s", failure);
   });
 
   // 归档与摘要都是 turn/end 之后的异步尾巴，不属于 agent 的活动，因此
@@ -126,7 +134,7 @@ export function apply(
       await value.summarizer.close();
       await value.store.drain();
     },
-    "dsh-run-archive.shutdown",
+    "dsh-recall.shutdown",
   );
 }
 
@@ -143,7 +151,7 @@ function drain(
     })
     .catch((error) => {
       logger?.warn?.(
-        "run-archive 等待归档落盘失败：%s",
+        "recall 等待归档落盘失败：%s",
         String((error as Error)?.message ?? error),
       );
     });
@@ -159,7 +167,7 @@ async function start(
   const query = ctx.sessionQuery;
   if (query === undefined) throw new Error("缺少 sessionQuery 服务");
   const opened = (await facility.open(runArchiveDomain)) as DomainLike;
-  logger?.debug?.("run-archive 已打开存储域 %s", runArchiveDomain.name);
+  logger?.debug?.("recall 已打开存储域 %s", runArchiveDomain.name);
 
   const store = new RunStore(opened, logger);
   const archive = new Archive(store, query, logger);
@@ -214,8 +222,8 @@ function service<T>(ctx: PluginContextLike, name: string): T | undefined {
 function missingLlm(logger: LoggerLike | undefined): LlmLike {
   return {
     stream(): never {
-      logger?.warn?.("run-archive 缺少 llm 服务，无法生成摘要");
-      throw new Error("run-archive 缺少 llm 服务");
+      logger?.warn?.("recall 缺少 llm 服务，无法生成摘要");
+      throw new Error("recall 缺少 llm 服务");
     },
   };
 }
@@ -264,9 +272,9 @@ function registerTools(
     return value;
   };
   const definitions: ToolDefinitionLike[] = [
-    createFindRunTool(() => need().archive),
-    createDetailTool(() => need().archive),
-    createDeleteTool(() => need().store),
+    createRecallTool(() => need().archive),
+    createRecallMessageTool(() => need().archive),
+    createForgetTool(() => need().store),
   ];
   for (const definition of definitions) tools.register(definition);
 }
@@ -282,7 +290,7 @@ function registerCommand(
   if (commands === undefined) return;
   commands.register({
     name: "runs",
-    description: RUNS_COMMAND_DESCRIPTION,
+    description: RECALL_COMMAND_DESCRIPTION,
     input: {
       hint: "search <关键词> | all | rID | rID/mID | summary rID | debug",
     },

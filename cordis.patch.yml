@@ -1,7 +1,7 @@
 # 组合包补丁层：profile 的 dsh.profile.bundles 里列出本包时应用。
 - insert:
-    - id: run-archive
-      name: dsh-run-archive
+    - id: recall
+      name: dsh-recall
       config:
         # 摘要的目标长度（Unicode 字符数），上限 2000。
         overviewLimit: 200

@@ -114,5 +114,5 @@ export async function runRunsCommand(
 }
 
 /** 命令描述；与工具文案同源，避免两处措辞漂移。 */
-export const RUNS_COMMAND_DESCRIPTION =
+export const RECALL_COMMAND_DESCRIPTION =
   "浏览 Run 归档：search <关键词> / all / rID / rID/mID / summary rID / debug";

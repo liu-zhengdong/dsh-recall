@@ -228,7 +228,7 @@ export class Summarizer {
     } catch (error) {
       const message = preview(String((error as Error)?.message ?? error), 240);
       this.lastError = message;
-      this.logger?.warn?.("run-archive 摘要失败：%s", message);
+      this.logger?.warn?.("recall 摘要失败：%s", message);
       await this.store.saveSummaryError(request.record, message);
     }
   }
@@ -248,7 +248,7 @@ export class Summarizer {
           id: crypto.randomUUID(),
           role: "user",
           content: [{ type: "text", text: evidence }],
-          source: { kind: "dsh-run-archive" },
+          source: { kind: "dsh-recall" },
         },
       ],
       system: summaryPrompt(limit),

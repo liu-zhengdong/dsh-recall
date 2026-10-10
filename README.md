@@ -1,4 +1,4 @@
-# dsh-run-archive
+# dsh-recall
 
 把 DSH 的**每个 turn 归档为一条 Run**，并让 Agent 检索自己的执行历史。
 
@@ -11,12 +11,12 @@ Agent 的上下文只装得下当前会话的最近几轮。**你与它更早做
 试错过什么**，在上下文里什么都不剩。本插件把这些落成可检索的归档：
 
 - 每完成一个 turn 就归档一条 **Run**（起止时间、工作目录、状态、目标、摘要）。
-- 三个模型工具让 Agent **自己**回查：`find_run`、`get_message_detail`、`delete_run`。
+- 三个模型工具让 Agent **自己**回查：`recall`、`recall_message`、`forget`。
 - `/runs` 命令让人浏览同一份归档。
 
 ## 与 pi-experiencev2 的差异
 
-| | pi-experiencev2 | dsh-run-archive |
+| | pi-experiencev2 | dsh-recall |
 | --- | --- | --- |
 | run 边界 | `agent_start` → `agent_end` | `turn/start` → `turn/end`（一个 turn = 一条 Run） |
 | 消息正文 | 自建 SQLite 存正文 | **不存正文**，检索时回读 `ctx.sessionQuery.readSession()` |
@@ -32,17 +32,17 @@ Agent 的上下文只装得下当前会话的最近几轮。**你与它更早做
 - **摘要**：归档后异步排队，调用模型生成一段中文概述。摘要是**附加**的：失败只记
   `summaryError`，归档本身照常。落盘前会等启动器退出前的那次 `sessions.flush()`，
   避免模型适配器已被卸载。
-- **检索**：`find_run` 按字面关键词在摘要与正文里查，分页返回；命中的消息可用
-  `get_message_detail` 按 `r12/m3` 展开全文。
-- **删除**：`delete_run` 永久删除指定 Run，留下一条极简墓碑（序号不复用）。
+- **检索**：`recall` 按字面关键词在摘要与正文里查，分页返回；命中的消息可用
+  `recall_message` 按 `r12/m3` 展开全文。
+- **删除**：`forget` 永久删除指定 Run，留下一条极简墓碑（序号不复用）。
 
 ## 三个模型工具
 
 | 工具 | 作用 |
 | --- | --- |
-| `find_run` | 按关键词 / Run ID / 时间 / 工作目录检索归档；命中摘要与正文，分页 |
-| `get_message_detail` | 按 `r3/m2` 读一条消息的全文；默认文本，`format=raw` 给原始 JSON |
-| `delete_run` | 在用户明确要求下批量删除 Run；先全批校验，未知 ID 整批拒绝 |
+| `recall` | 按关键词 / Run ID / 时间 / 工作目录检索归档；命中摘要与正文，分页 |
+| `recall_message` | 按 `r3/m2` 读一条消息的全文；默认文本，`format=raw` 给原始 JSON |
+| `forget` | 在用户明确要求下批量删除 Run；先全批校验，未知 ID 整批拒绝 |
 
 工具结果与卡片都按「历史证据」措辞——**记录已保存不等于任务成功**。
 
@@ -63,21 +63,22 @@ Agent 的上下文只装得下当前会话的最近几轮。**你与它更早做
 ## 安装
 
 ```bash
-# 本地 checkout（开发用）
-dsh plugin --profile <profile> add /abs/path/to/dsh-run-archive
+# 从 GitHub
+dsh plugin --profile <profile> add github:liu-zhengdong/dsh-recall
 
-# 或从 npm
-dsh plugin --profile <profile> add dsh-run-archive
+# 本地 checkout（开发用）
+dsh plugin --profile <profile> add /abs/path/to/dsh-recall
 ```
 
 包声明了 `dsh.bundle.patch`，添加后包名会被追加进该 profile 的 `dsh.profile.bundles`。
 验证层已挂上：
 
 ```bash
-dsh --profile <profile> --dump-config | grep -B2 -A6 dsh-run-archive
+dsh --profile <profile> --dump-config | grep -B2 -A6 dsh-recall
 ```
 
-> link 安装不会给插件装依赖。从 git 安装时请先在 checkout 里 `npm install`。
+> 本包未发布到 npm，`add dsh-recall` 会失败。
+> `prepare` 脚本会在安装时自动跑 `tsc` 生成 `lib/`。
 
 ## 配置
 
