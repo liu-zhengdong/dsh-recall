@@ -7,7 +7,9 @@ import {
   type StartupRecallScope,
 } from "../src/config.ts";
 import type { RunRecord } from "../src/domain.ts";
-import type { AgentLike, InjectedUserMessageLike, LoggerLike } from "../src/dsh.ts";
+import { DreamEngine } from "../src/dream/engine.ts";
+import { DreamStore } from "../src/dream/store.ts";
+import type { AgentLike, DomainLike, InjectedUserMessageLike, KvTableLike, LoggerLike } from "../src/dsh.ts";
 import {
   composeStartupRecall,
   deliverStartupRecall,
@@ -150,7 +152,10 @@ describe("deliverStartupRecall", () => {
     source?: string;
     agent?: AgentLike & { injected: InjectedUserMessageLike[] };
     config?: Partial<PluginConfig>;
-    ready?: Promise<{ store: { list(): RunRecord[] } }>;
+    ready?: Promise<{
+      store: { list(): RunRecord[] };
+      dream?: { isReviewSession(sessionId: string): boolean };
+    }>;
     timeoutMs?: number;
     signal?: AbortSignal;
   } = {}) {
@@ -205,12 +210,35 @@ describe("deliverStartupRecall", () => {
     }
   });
 
-  it("still injects a seeded startup, because the host announces forks as startup", async () => {
+  it("skips a seeded startup: the host announces forks as startup and marks them isSeeded", async () => {
     const seeded = agent({ session: { header: { cwd: "/work", isSeeded: true, parentSession: "parent" } } });
-    assert.equal(isStartupRecallTarget("startup", seeded), true);
+    assert.equal(isStartupRecallTarget("startup", seeded), false);
+    const fresh = agent({ session: { header: { cwd: "/work", isSeeded: false } } });
+    assert.equal(isStartupRecallTarget("startup", fresh), true);
     const { target, delivered } = harness({ agent: seeded });
     await delivered;
-    assert.equal(target.injected.length, 1);
+    assert.deepEqual(target.injected, []);
+  });
+
+  it("skips this plugin's review session, and still injects a session that only points at one", async () => {
+    const review = agent({ session: { id: "review", header: { id: "review", cwd: "/work" } } });
+    const related = agent({ session: { id: "related", header: { id: "related", cwd: "/work" } } });
+    const dream = {
+      isReviewSession(sessionId: string) {
+        return sessionId === "review";
+      },
+    };
+    const skipped = harness({
+      agent: review,
+      ready: Promise.resolve({ store: { list: () => [run()] }, dream }),
+    });
+    const kept = harness({
+      agent: related,
+      ready: Promise.resolve({ store: { list: () => [run()] }, dream }),
+    });
+    await Promise.all([skipped.delivered, kept.delivered]);
+    assert.deepEqual(skipped.target.injected, []);
+    assert.equal(kept.target.injected.length, 1);
   });
 
   it("skips when the archive is not ready in time, and does not throw if startup failed", async () => {
@@ -270,6 +298,43 @@ describe("installStartupRecall", () => {
     await assert.doesNotReject(Promise.resolve(listener?.(null)));
   });
 });
+
+describe("DreamEngine.isReviewSession", () => {
+  it("is true only when the dream session table records the session as its own root", async () => {
+    const store = new DreamStore(memoryDomain());
+    const engine = new DreamEngine({
+      host: { sessionQuery: { async readSession() { return { events: [] }; } } },
+      current: () => normalizeConfig({}),
+      store,
+      runs: () => [],
+      archive: { async boundaryOf() { return undefined; } },
+    });
+    await store.rememberSession("review", "review");
+    await store.rememberSession("forked-from-review", "review");
+    assert.equal(engine.isReviewSession("review"), true);
+    assert.equal(engine.isReviewSession("forked-from-review"), false);
+    assert.equal(engine.isReviewSession("user"), false);
+    assert.equal(engine.isReviewSession(""), false);
+  });
+});
+
+function memoryDomain(): DomainLike {
+  return {
+    table(name: string): KvTableLike<unknown> {
+      const rows = new Map<string, unknown>();
+      return {
+        get: (key) => rows.get(`${name}:${key}`),
+        entries: () => rows.entries(),
+        get size() { return rows.size; },
+        put: (key, value) => {
+          rows.set(`${name}:${key}`, value);
+          return Promise.resolve();
+        },
+        delete: (key) => Promise.resolve(rows.delete(`${name}:${key}`)),
+      };
+    },
+  };
+}
 
 describe("startupRecallMessage", () => {
   it("uses the caller-supplied id, which is a plain string at runtime", () => {

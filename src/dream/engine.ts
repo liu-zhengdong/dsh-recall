@@ -55,6 +55,16 @@ export class DreamEngine {
 
   constructor(options: DreamEngineOptions) { this.options = options; }
   get store(): DreamStore { return this.options.store; }
+
+  /**
+   * 这个会话是本插件创建的复盘会话。
+   *
+   * `begin` 在 `agents.create` 之前把复盘会话写成它自己的根（`rootSessionId === sessionId`）。
+   * 从它 fork 出去的会话记的是复盘会话的 id，不是自己，因此不会被认成复盘会话。
+   */
+  isReviewSession(sessionId: string): boolean {
+    return sessionId !== "" && this.store.root(sessionId) === sessionId;
+  }
   notify(): void { this.changed(); }
   track<T>(operation: () => Promise<T>): Promise<T> {
     if (this.closed) return Promise.reject(new Error("Dream 已关闭"));

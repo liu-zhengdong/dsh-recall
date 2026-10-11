@@ -38,8 +38,8 @@ export interface SessionHeaderLike {
   cwd?: string;
   parentSession?: string;
   /**
-   * 宿主 fork 标记。`dsh-agent-loop` 的 `createAgent` 对带 seed 的 fork
-   * 仍然以 `startup` 发布 `agent/created`，这个字段才是延续会话的依据。
+   * 宿主的 fork / seed 标记。`createAgent` 对带 seed 的创建仍发布
+   * `source: "startup"`，延续关系只记在这里。
    */
   isSeeded?: boolean;
   /** 子代理的产品分类；顶层会话没有这个字段。 */

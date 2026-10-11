@@ -8,10 +8,15 @@ export declare const STARTUP_RECALL_MAX_BYTES: number;
 export interface StartupStoreLike {
     list(): RunRecord[];
 }
+/** 归档就绪之后启动注入能看到的运行时。复盘归属不在 `agent/created` 载荷里。 */
+export interface StartupRuntimeLike {
+    store: StartupStoreLike;
+    dream?: {
+        isReviewSession(sessionId: string): boolean;
+    };
+}
 export interface StartupRecallDeps {
-    ready: Promise<{
-        store: StartupStoreLike;
-    }>;
+    ready: Promise<StartupRuntimeLike>;
     current: () => PluginConfig;
     logger?: LoggerLike;
     timeoutMs?: number;
@@ -22,7 +27,10 @@ interface CreatedPayload {
     source?: string;
     signal?: AbortSignal;
 }
-/** 只注入顶层会话的首次创建。子代理、续接、清空、压缩都跳过。 */
+/**
+ * 只注入顶层的全新会话。
+ * 子代理、fork（`isSeeded`）、续接、清空、压缩都跳过。复盘会话要等存储就绪后再判。
+ */
 export declare function isStartupRecallTarget(source: string, agent: AgentLike): boolean;
 /**
  * `store.list()` 已经按序号从新到旧排过，墓碑不在这张表里。

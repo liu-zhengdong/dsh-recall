@@ -6,13 +6,13 @@
  * 一条 Run 都没有，都只是跳过，不能把异常抛回创建流程。
  *
  * 宿主 0.2.0-rc.2 的事实（`dsh-agent-loop` 与 `session-controller`）：
- * - `create` / `createAgent` 发布的 source 固定是 `startup`，fork 也走这条
- *   （带 seed、`isSeeded: true`），没有单独的 source。
+ * - `create` / `createAgent` 发布的 source 固定是 `startup`，fork 也走这条。
+ *   延续关系记在会话头的 `isSeeded` 上，不在 source 里。
  * - `resume` 发布 `resume`。`clear` / `compact` 在类型里，该版本没有调用点。
  * - 子代理由 `dsh-subagent` 标成 `origin: "subagent"`，并把深度写进
  *   `header.delegationDepth` 与 `options.subagentDepth`。
- *   `agents.roots()` 只表示运行时没有父 Agent，fork 和复盘会话也算 root，
- *   所以不用它区分子代理。
+ * - 复盘会话在 `agents.create` 之前就写进 dream 的 sessions 表，且自己就是根。
+ *   `agent/created` 的载荷里没有这个标记，所以就绪后读那张表。
  */
 import { randomUUID } from "node:crypto";
 
@@ -35,8 +35,14 @@ export interface StartupStoreLike {
   list(): RunRecord[];
 }
 
+/** 归档就绪之后启动注入能看到的运行时。复盘归属不在 `agent/created` 载荷里。 */
+export interface StartupRuntimeLike {
+  store: StartupStoreLike;
+  dream?: { isReviewSession(sessionId: string): boolean };
+}
+
 export interface StartupRecallDeps {
-  ready: Promise<{ store: StartupStoreLike }>;
+  ready: Promise<StartupRuntimeLike>;
   current: () => PluginConfig;
   logger?: LoggerLike;
   timeoutMs?: number;
@@ -49,9 +55,12 @@ interface CreatedPayload {
   signal?: AbortSignal;
 }
 
-/** 只注入顶层会话的首次创建。子代理、续接、清空、压缩都跳过。 */
+/**
+ * 只注入顶层的全新会话。
+ * 子代理、fork（`isSeeded`）、续接、清空、压缩都跳过。复盘会话要等存储就绪后再判。
+ */
 export function isStartupRecallTarget(source: string, agent: AgentLike): boolean {
-  return source === "startup" && !isSubagent(agent);
+  return source === "startup" && !isSubagent(agent) && agent.session?.header?.isSeeded !== true;
 }
 
 /**
@@ -108,6 +117,8 @@ export async function deliverStartupRecall(
 
     const runtime = await waitForReady(deps.ready, deps.timeoutMs ?? STARTUP_RECALL_READY_TIMEOUT_MS);
     if (runtime === undefined || payload.signal?.aborted) return;
+    const sessionId = agent.session?.id ?? agent.session?.header?.id;
+    if (typeof sessionId === "string" && sessionId !== "" && runtime.dream?.isReviewSession(sessionId) === true) return;
 
     const selected = selectStartupRuns(runtime.store.list(), {
       cwd: agent.session?.header?.cwd ?? "",
@@ -189,12 +200,12 @@ function createdPayload(value: unknown): CreatedPayload {
 }
 
 function waitForReady(
-  ready: Promise<{ store: StartupStoreLike }>,
+  ready: Promise<StartupRuntimeLike>,
   timeoutMs: number,
-): Promise<{ store: StartupStoreLike } | undefined> {
+): Promise<StartupRuntimeLike | undefined> {
   return new Promise((resolve) => {
     let settled = false;
-    const finish = (value: { store: StartupStoreLike } | undefined): void => {
+    const finish = (value: StartupRuntimeLike | undefined): void => {
       if (settled) return;
       settled = true;
       clearTimeout(timer);
