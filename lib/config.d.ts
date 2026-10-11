@@ -6,6 +6,9 @@ import Schema from "@deepseek-ai/schemastery";
  */
 export declare const DEFAULT_OVERVIEW_LIMIT = 200;
 export declare const MAX_OVERVIEW_LIMIT = 2000;
+export declare const DEFAULT_STARTUP_RECALL_COUNT = 10;
+export declare const MAX_STARTUP_RECALL_COUNT = 100;
+export type StartupRecallScope = "cwd" | "all";
 export interface PluginConfig {
     overviewLimit: number;
     noSummary: boolean;
@@ -16,6 +19,12 @@ export interface PluginConfig {
     dreamProvider: string;
     dreamModel: string;
     dreamMemoryDirectory: string;
+    /** 新会话开始时是否把最近 Run 的索引注入主 Agent。默认开。 */
+    startupRecall: boolean;
+    /** 注入条数。默认 10。 */
+    startupRecallCount: number;
+    /** `cwd` 只含当前目录；`all` 含全部目录。默认 `cwd`。 */
+    startupRecallScope: StartupRecallScope;
 }
 export declare const Config: Schema<Schemastery.ObjectS<NoInfer<{
     overviewLimit: Schema<number, number, "volatile-defined">;
@@ -27,6 +36,9 @@ export declare const Config: Schema<Schemastery.ObjectS<NoInfer<{
     dreamProvider: Schema<string, string, "volatile-defined">;
     dreamModel: Schema<string, string, "volatile-defined">;
     dreamMemoryDirectory: Schema<string, string, "volatile-defined">;
+    startupRecall: Schema<boolean, boolean, "volatile-defined">;
+    startupRecallCount: Schema<number, number, "volatile-defined">;
+    startupRecallScope: Schema<"cwd" | "all", "cwd" | "all", "volatile-defined">;
 }>>, Schemastery.ObjectT<NoInfer<{
     overviewLimit: Schema<number, number, "volatile-defined">;
     noSummary: Schema<boolean, boolean, "volatile-defined">;
@@ -37,6 +49,9 @@ export declare const Config: Schema<Schemastery.ObjectS<NoInfer<{
     dreamProvider: Schema<string, string, "volatile-defined">;
     dreamModel: Schema<string, string, "volatile-defined">;
     dreamMemoryDirectory: Schema<string, string, "volatile-defined">;
+    startupRecall: Schema<boolean, boolean, "volatile-defined">;
+    startupRecallCount: Schema<number, number, "volatile-defined">;
+    startupRecallScope: Schema<"cwd" | "all", "cwd" | "all", "volatile-defined">;
 }>>, "plain">;
 /** cosmokit 的 volatile 引用：schemastery `.volatile()` 字段的运行时形状。 */
 export interface VolatileField<T> {

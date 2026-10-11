@@ -50,6 +50,13 @@ export declare class DreamEngine {
     private lastError;
     constructor(options: DreamEngineOptions);
     get store(): DreamStore;
+    /**
+     * 这个会话是本插件创建的复盘会话。
+     *
+     * `begin` 在 `agents.create` 之前把复盘会话写成它自己的根（`rootSessionId === sessionId`）。
+     * 从它 fork 出去的会话记的是复盘会话的 id，不是自己，因此不会被认成复盘会话。
+     */
+    isReviewSession(sessionId: string): boolean;
     notify(): void;
     track<T>(operation: () => Promise<T>): Promise<T>;
     subscribe(listener: () => void): () => void;

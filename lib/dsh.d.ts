@@ -37,6 +37,18 @@ export interface SessionHeaderLike {
     id?: string;
     cwd?: string;
     parentSession?: string;
+    /**
+     * 宿主的 fork / seed 标记。`createAgent` 对带 seed 的创建仍发布
+     * `source: "startup"`，延续关系只记在这里。
+     */
+    isSeeded?: boolean;
+    /** 子代理的产品分类；顶层会话没有这个字段。 */
+    origin?: "subagent";
+    /**
+     * 委托深度。缺省视为 0（顶层）。子代理是父深度 + 1，
+     * 并会随会话持久化，恢复后也不会变回顶层。
+     */
+    delegationDepth?: number;
 }
 export interface SessionLike {
     id?: string;
@@ -46,6 +58,40 @@ export interface SessionLike {
 export interface SessionLogSnapshotLike {
     session?: SessionHeaderLike;
     events: SessionEventLike[];
+}
+/**
+ * `agent/created` 的 source。
+ *
+ * 宿主 0.2.0-rc.2 里，`create` / `createAgent`（含 fork）发布 `startup`，
+ * `resume` 发布 `resume`。`clear` 与 `compact` 在类型里，该版本没有调用点。
+ */
+export type AgentCreatedSourceLike = "startup" | "resume" | "clear" | "compact";
+/** 注入进下一个 pre-step 的用户消息。`id` 在运行时只是非空字符串。 */
+export interface InjectedUserMessageLike {
+    id: string;
+    role: "user";
+    content: readonly {
+        readonly type: "text";
+        readonly text: string;
+    }[];
+    source: {
+        readonly kind: string;
+        readonly form?: "recall";
+    };
+}
+/**
+ * 启动注入能看到的 Agent。
+ *
+ * `inject` 把消息排进下一个 pre-step，不唤醒驱动。
+ * 子代理的判定用会话头上的 `origin` / `delegationDepth`，
+ * 以及 `options.subagentDepth`（与 `dsh-subagent` 的 `delegationDepthOf` 同一对字段）。
+ */
+export interface AgentLike {
+    inject?(message: InjectedUserMessageLike): void;
+    session?: SessionLike;
+    options?: {
+        subagentDepth?: number;
+    };
 }
 export interface DreamAgentLike {
     id: string;
