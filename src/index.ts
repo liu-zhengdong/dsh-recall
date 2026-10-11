@@ -15,7 +15,13 @@ import Schema from "@deepseek-ai/schemastery";
 import { runRunsCommand, RECALL_COMMAND_DESCRIPTION } from "./command.ts";
 import { Config, normalizeConfig, type PluginConfig } from "./config.ts";
 import { runArchiveDomain } from "./domain.ts";
+import { DreamEngine } from "./dream/engine.ts";
+import { registerDreamCommand } from "./dream/command.ts";
+import { DreamStore } from "./dream/store.ts";
+import { createDreamTools } from "./dream/tools.ts";
 import type {
+  AgentsLike,
+  SessionsLike,
   CommandInvocationLike,
   CommandResultLike,
   CommandsLike,
@@ -52,6 +58,7 @@ type Runtime = {
   archive: Archive;
   summarizer: Summarizer;
   recorder: RunRecorder;
+  dream: DreamEngine;
 };
 
 export function apply(
@@ -73,6 +80,7 @@ export function apply(
         pending.push({ session, event });
         return;
       }
+      runtime.dream.capture(session as never, event as never);
       runtime.recorder.capture(
         session as { id?: string; header?: { cwd?: string } },
         event as never,
@@ -80,17 +88,32 @@ export function apply(
     }) as never,
     { global: true },
   );
+  const pendingSessions: unknown[] = [];
+  ctx.on("session/created", ((session: unknown) => {
+    if (runtime === undefined) pendingSessions.push(session);
+    else runtime.dream.sessionCreated(session as never);
+  }) as never, { global: true });
 
   const ready = start(ctx, current, logger).then((value) => {
     runtime = value;
+    for (const session of pendingSessions.splice(0)) value.dream.sessionCreated(session as never);
     const queued = pending.splice(0, pending.length);
-    for (const item of queued)
+    for (const item of queued) {
+      value.dream.capture(item.session as never, item.event as never);
       value.recorder.capture(
         item.session as { id?: string; header?: { cwd?: string } },
         item.event as never,
       );
+    }
     registerTools(ctx, () => runtime, () => failure, value);
     registerCommand(ctx, () => runtime, () => failure, current, value);
+    registerDreamCommand(service<CommandsLike>(ctx, "commands"), () => {
+      if (runtime === undefined) throw new Error("复盘尚未就绪");
+      return runtime.dream;
+    });
+    void value.dream.initialize().catch((error) => {
+      logger?.error?.("复盘初始化失败：%s", String((error as Error)?.message ?? error));
+    });
     // Web 设置页的搜索界面走这条桥；服务缺失时注册失败只会降级，
     // 不影响归档与模型工具。
     try {
@@ -130,6 +153,7 @@ export function apply(
       if (value === undefined) return;
       // 顺序要紧：先等归档跑完（它会排队摘要），再等摘要跑完，最后确保写盘。
       // 任一环节提前返回，宿主都会在这之后关掉存储域，留下写不进的尾巴。
+      await value.dream.close();
       await value.recorder.close();
       await value.summarizer.close();
       await value.store.drain();
@@ -179,11 +203,24 @@ async function start(
     limit: () => current().overviewLimit,
     enabled: () => !current().noSummary && llm !== undefined,
   });
+  const dream = new DreamEngine({
+    host: {
+      agents: service<AgentsLike>(ctx, "agents"),
+      sessions: service<SessionsLike>(ctx, "sessions"),
+      sessionQuery: query,
+      logger,
+    },
+    current,
+    store: await DreamStore.open(facility),
+    runs: () => store.list(),
+    archive,
+  });
   const recorder = new RunRecorder({
     store,
     loadBoundary: (sessionId, turn) => archive.boundaryOf(sessionId, turn),
     logger,
     onArchived: (record, boundary) => {
+      dream.archived(record);
       if (current().noSummary) return;
       const route = resolveRoute(current(), boundary);
       if (route === undefined) {
@@ -201,7 +238,7 @@ async function start(
       });
     },
   });
-  return { store, archive, summarizer, recorder };
+  return { store, archive, summarizer, recorder, dream };
 }
 
 /**
@@ -275,6 +312,7 @@ function registerTools(
     createRecallTool(() => need().archive),
     createRecallMessageTool(() => need().archive),
     createForgetTool(() => need().store),
+    ...createDreamTools(() => need().dream),
   ];
   for (const definition of definitions) tools.register(definition);
 }
