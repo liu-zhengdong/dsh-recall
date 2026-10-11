@@ -11,17 +11,32 @@ export interface PluginConfig {
     noSummary: boolean;
     summaryProvider: string;
     summaryModel: string;
+    autoDream: boolean;
+    dreamThreshold: number;
+    dreamProvider: string;
+    dreamModel: string;
+    dreamMemoryDirectory: string;
 }
 export declare const Config: Schema<Schemastery.ObjectS<NoInfer<{
     overviewLimit: Schema<number, number, "volatile-defined">;
     noSummary: Schema<boolean, boolean, "volatile-defined">;
     summaryProvider: Schema<string, string, "volatile-defined">;
     summaryModel: Schema<string, string, "volatile-defined">;
+    autoDream: Schema<boolean, boolean, "volatile-defined">;
+    dreamThreshold: Schema<number, number, "volatile-defined">;
+    dreamProvider: Schema<string, string, "volatile-defined">;
+    dreamModel: Schema<string, string, "volatile-defined">;
+    dreamMemoryDirectory: Schema<string, string, "volatile-defined">;
 }>>, Schemastery.ObjectT<NoInfer<{
     overviewLimit: Schema<number, number, "volatile-defined">;
     noSummary: Schema<boolean, boolean, "volatile-defined">;
     summaryProvider: Schema<string, string, "volatile-defined">;
     summaryModel: Schema<string, string, "volatile-defined">;
+    autoDream: Schema<boolean, boolean, "volatile-defined">;
+    dreamThreshold: Schema<number, number, "volatile-defined">;
+    dreamProvider: Schema<string, string, "volatile-defined">;
+    dreamModel: Schema<string, string, "volatile-defined">;
+    dreamMemoryDirectory: Schema<string, string, "volatile-defined">;
 }>>, "plain">;
 /** cosmokit 的 volatile 引用：schemastery `.volatile()` 字段的运行时形状。 */
 export interface VolatileField<T> {

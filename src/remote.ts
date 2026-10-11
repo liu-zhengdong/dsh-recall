@@ -9,6 +9,9 @@
  * 因此方法必须是普通类方法、参数是简单标识符；末位参数名为 `signal`
  * 即取消信号。返回值必须是无损 JSON。
  */
+import type { DreamEngine } from "./dream/engine.ts";
+import { dreamStatusView, dreamSummary } from "./dream/view.ts";
+
 const REMOTE_METHOD_DESCRIPTOR = "@deepseek-ai/dsh-typert-protocol/remote-methods";
 
 const NAMESPACE = "recall";
@@ -18,6 +21,7 @@ const SERVICE_KEY = "dsh-recall/remote";
 const NOT_READY = "Run 归档尚未就绪";
 
 type Runtime = {
+  dream: DreamEngine;
   store: {
     list(): unknown[];
     remove(ids: string[], reason: string): Promise<unknown>;
@@ -30,11 +34,12 @@ type Runtime = {
 
 function markRemote(
   prototype: object,
-  entries: { method: string }[],
+  entries: { method: string; mode?: "stream" }[],
 ): void {
   const methods = entries.map((entry) =>
     Object.freeze({
       method: entry.method,
+      ...(entry.mode === undefined ? {} : { mode: entry.mode }),
       invocation: Object.freeze({ kind: "direct" }),
     }),
   );
@@ -78,6 +83,75 @@ export class RecallRemoteService {
     serviceKey: string;
     namespace: string;
   };
+
+  private needDream(): DreamEngine {
+    const value = this.runtime();
+    if (value === undefined) throw new Error(this.failure() ?? NOT_READY);
+    return value.dream;
+  }
+
+  dreamStatus() {
+    return structured(dreamStatusView(this.needDream().status()));
+  }
+
+  dreams(args: unknown) {
+    const input = (args ?? {}) as { offset?: unknown; limit?: unknown };
+    const offset = input.offset ?? 0;
+    const limit = input.limit ?? 30;
+    if (!Number.isSafeInteger(offset) || (offset as number) < 0 ||
+        !Number.isSafeInteger(limit) || (limit as number) < 1 || (limit as number) > 50)
+      throw new Error("复盘分页需要非负 offset，以及 1–50 的 limit");
+    const page = this.needDream().list({ offset: offset as number, limit: limit as number });
+    return structured({ items: page.items.map(dreamSummary), hasMore: page.hasMore });
+  }
+
+  dreamDetail(id: unknown) {
+    if (typeof id !== "string") throw new Error("id 必须是复盘 ID");
+    const job = this.needDream().store.get(id);
+    if (!job) throw new Error(`没有复盘 ${id}`);
+    return structured(job);
+  }
+
+  async dreamRun(cwd: unknown) {
+    if (cwd !== undefined && typeof cwd !== "string") throw new Error("cwd 必须是目录字符串");
+    return structured(dreamSummary(await this.needDream().run(cwd as string | undefined)));
+  }
+
+  async dreamStop() {
+    return structured(dreamStatusView(await this.needDream().stop()));
+  }
+
+  async dreamPause(paused: unknown) {
+    if (typeof paused !== "boolean") throw new Error("paused 必须是布尔值");
+    return structured(dreamStatusView(await this.needDream().pause(paused)));
+  }
+
+  async dreamRetry(id: unknown) {
+    if (typeof id !== "string") throw new Error("id 必须是复盘 ID");
+    return structured(dreamSummary(await this.needDream().retry(id)));
+  }
+
+  /** 单个脏位合并变化，慢客户端不会堆积历史快照；传输取消同时释放订阅。 */
+  async *dreamWatch(signal: AbortSignal) {
+    const engine = this.needDream();
+    let dirty = true;
+    let wake: (() => void) | undefined;
+    const changed = () => { dirty = true; wake?.(); };
+    const unsubscribe = engine.subscribe(changed);
+    signal.addEventListener("abort", changed, { once: true });
+    try {
+      while (!signal.aborted) {
+        if (!dirty) await new Promise<void>((resolve) => { wake = resolve; });
+        wake = undefined;
+        if (signal.aborted) break;
+        dirty = false;
+        yield { changed: true };
+      }
+    } finally {
+      unsubscribe();
+      signal.removeEventListener("abort", changed);
+    }
+  }
 
   /** 全部 Run（不含正文），供列表页一次拉全。 */
   runs() {
@@ -127,6 +201,14 @@ markRemote(RecallRemoteService.prototype, [
   { method: "search" },
   { method: "detail" },
   { method: "forget" },
+  { method: "dreamStatus" },
+  { method: "dreams" },
+  { method: "dreamDetail" },
+  { method: "dreamRun" },
+  { method: "dreamStop" },
+  { method: "dreamPause" },
+  { method: "dreamRetry" },
+  { method: "dreamWatch", mode: "stream" },
 ]);
 
 /**

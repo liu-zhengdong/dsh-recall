@@ -33,13 +33,55 @@ export interface SessionEventLike {
   data?: unknown;
 }
 
+export interface SessionHeaderLike {
+  id?: string;
+  cwd?: string;
+  parentSession?: string;
+}
+
+export interface SessionLike {
+  id?: string;
+  header?: SessionHeaderLike;
+  append?(type: string, data: unknown): unknown;
+}
+
 export interface SessionLogSnapshotLike {
+  session?: SessionHeaderLike;
   events: SessionEventLike[];
 }
+
+export interface DreamAgentLike {
+  id: string;
+  session: SessionLike;
+  followup(message: { id: string; role: "user"; source: { kind: "user" }; content: { type: "text"; text: string }[] }): void;
+  whenIdle(): Promise<void>;
+  cancel(cause: { kind: "user" | "disposed" }): void;
+}
+
+export interface AgentHandleLike {
+  agent: DreamAgentLike;
+  dispose(): Promise<void>;
+}
+
+export interface AgentsLike {
+  root?: AgentsLike;
+  create(options: {
+    sessionId: string;
+    meta: { cwd: string };
+    signal?: AbortSignal;
+    agentOptions?: { provider: string; model: string };
+    setup?: (ctx: PluginContextLike, agent: DreamAgentLike) => void;
+  }): Promise<AgentHandleLike>;
+  get?(id: string): DreamAgentLike | undefined;
+  withoutInitiator?<T>(operation: () => T): T;
+}
+
+export interface SessionsLike { get(id: string): SessionLike | undefined; }
 
 /** `ctx.sessionQuery` 的最小面：只用到回读日志。 */
 export interface SessionQueryLike {
   readSession(sessionId: string): Promise<SessionLogSnapshotLike>;
+  listSessions?(signal?: AbortSignal): Promise<{ header: SessionHeaderLike }[]>;
 }
 
 /** `ctx.llm.stream()` 的入参；只声明本插件实际传的字段。 */
@@ -91,7 +133,7 @@ export interface LoggerLike {
 }
 
 export interface ToolRunContextLike {
-  agent?: { session?: { header?: { cwd?: string } } };
+  agent?: { id?: string; session?: SessionLike };
   signal?: AbortSignal;
 }
 
@@ -111,12 +153,13 @@ export interface ToolDefinitionLike {
 
 export interface ToolsLike {
   register(definition: unknown): () => void;
+  restrict?(filter: { allow?: readonly string[]; deny?: readonly string[] }): () => void;
 }
 
 export interface CommandInvocationLike {
   rawInput?: string;
   signal?: AbortSignal;
-  agent?: { session?: { header?: { cwd?: string } } };
+  agent?: { id?: string; session?: SessionLike };
 }
 
 export interface CommandResultLike {

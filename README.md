@@ -1,6 +1,6 @@
 # dsh-recall
 
-把 DSH 的**每个 turn 归档为一条 Run**，并让 Agent 检索自己的执行历史。
+把 DSH 的**每个 turn 归档为一条 Run**，让 Agent 检索历史，并自动复盘积累的执行记录。
 
 从 [pi-experiencev2](https://github.com/liu-zhengdong/pi-experiencev2) 移植。行为契约
 （run 边界、检索语法、摘要与文案）保持不变，存储与注入机制按 DSH 的插件面重写。
@@ -11,8 +11,11 @@ Agent 的上下文只装得下当前会话的最近几轮。**你与它更早做
 试错过什么**，在上下文里什么都不剩。本插件把这些落成可检索的归档：
 
 - 每完成一个 turn 就归档一条 **Run**（起止时间、工作目录、状态、目标、摘要）。
-- 三个模型工具让 Agent **自己**回查：`recall`、`recall_message`、`forget`。
+- `recall`、`recall_message` 和 `forget` 让 Agent **自己**回查归档。
 - `/runs` 命令让人浏览同一份归档。
+- 同一目录积累 30 条未整理 Run 后，自动启动独立复盘会话。左侧「复盘」查看过程与结果；无需安装其他记忆插件。
+
+复盘的操作与配置见 [自动复盘](docs/auto-dream.md)。
 
 ## 与 pi-experiencev2 的差异
 
@@ -21,7 +24,7 @@ Agent 的上下文只装得下当前会话的最近几轮。**你与它更早做
 | run 边界 | `agent_start` → `agent_end` | `turn/start` → `turn/end`（一个 turn = 一条 Run） |
 | 消息正文 | 自建 SQLite 存正文 | **不存正文**，检索时回读 `ctx.sessionQuery.readSession()` |
 | 检索 | 自己的 FTS/扫描 | 自己的 Run 索引 + 宿主提供的会话正文 |
-| 界面 | TUI 面板（滚动、按键） | `/runs` 返回文本（DSH 无对应面板 API） |
+| 界面 | TUI 面板（滚动、按键） | `/runs`、回忆设置页与左侧复盘会话 |
 | 配置 | agent 目录下的 `pi-experiencev2.json` | profile 的 `cordis.patch.yml`（schemastery Config） |
 | 摘要路由 | Pi 的 model registry | 配置项指定；留空则回落到当前会话的模型 |
 
@@ -36,13 +39,16 @@ Agent 的上下文只装得下当前会话的最近几轮。**你与它更早做
   `recall_message` 按 `r12/m3` 展开全文。
 - **删除**：`forget` 永久删除指定 Run，留下一条极简墓碑（序号不复用）。
 
-## 三个模型工具
+## 模型工具
 
 | 工具 | 作用 |
 | --- | --- |
 | `recall` | 按关键词 / Run ID / 时间 / 工作目录检索归档；命中摘要与正文，分页 |
 | `recall_message` | 按 `r3/m2` 读一条消息的全文；默认文本，`format=raw` 给原始 JSON |
 | `forget` | 在用户明确要求下批量删除 Run；先全批校验，未知 ID 整批拒绝 |
+| `dream` | 查询保存的复盘结论、固定材料范围和来源 |
+| `dream_complete` | 复盘会话提交有来源的结论；正常结束后完成 |
+| `dream_memory` | 复盘会话读写配置的 Markdown 记忆目录，记录实际前后内容 |
 
 工具结果与卡片都按「历史证据」措辞——**记录已保存不等于任务成功**。
 
@@ -87,9 +93,13 @@ dsh --profile <profile> --dump-config | grep -B2 -A6 dsh-recall
 | 字段 | 默认 | 说明 |
 | --- | --- | --- |
 | `overviewLimit` | `200` | 每条 Run 摘要的目标 Unicode 字符数（1–2000） |
-| `noSummary` | `false` | 置 `true` 则只归档，完全不调用模型 |
+| `noSummary` | `false` | 关闭 Run 摘要；自动复盘由 `autoDream` 单独控制 |
 | `summaryProvider` | `""` | 摘要模型的 provider；与 `summaryModel` 必须同时填写 |
 | `summaryModel` | `""` | 摘要模型的 model 名 |
+| `autoDream` | `true` | 同目录达到门槛时自动复盘，可在侧栏暂停 |
+| `dreamThreshold` | `30` | 自动复盘门槛（1–1000），每批最多 30 条 |
+| `dreamProvider` / `dreamModel` | `""` | 同时留空使用宿主默认路由；同时填写可指定复盘模型 |
+| `dreamMemoryDirectory` | `""` | 可选 Markdown 记忆目录；留空仅保存复盘结论 |
 
 `summaryProvider` 与 `summaryModel` 都留空时，沿用当前会话的模型路由。**只填一半会
 被当作配置错误**——此时不生成摘要，只记 `summaryError`：宁可不摘要，也不猜另一半。
@@ -103,4 +113,6 @@ dsh --profile <profile> --dump-config | grep -B2 -A6 dsh-recall
 ```
 
 存储域名为 `run_archive`，后端由 profile 的 `storage-domain` 决定（默认 `json`）。
-**本插件不存消息正文**：正文始终是宿主自己的会话日志，插件只在检索时回读。
+**本插件不复制原始消息正文**：正文始终是宿主自己的会话日志，插件只在检索时回读。
+
+复盘进度与结果存于独立 `dream` 存储域。复盘会话正文也由宿主管理；可选记忆文件变化的前后内容保存在该次复盘中，供人审阅。设计与边界见 [实现设计](docs/specs/auto-dream.md)。
