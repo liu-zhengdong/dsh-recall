@@ -14,5 +14,10 @@ export declare function preview(text: string, maximum: number): string;
 export declare function clean(value: string): string;
 /** 摘要缺失时的回退行。 */
 export declare function overviewLine(overview: string | null, goal: string, limit?: number): string;
+/**
+ * 启动注入的开头。Run 是过去发生过什么的存档，不是当前指令，
+ * 也不证明当时的任务成功。
+ */
+export declare function startupRecallLead(count: number, scope: "cwd" | "all"): string;
 /** 一条消息的角色标签。 */
 export declare function roleLabel(message: MessageLike): string;

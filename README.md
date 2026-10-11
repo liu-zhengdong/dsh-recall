@@ -38,6 +38,7 @@ Agent 的上下文只装得下当前会话的最近几轮。**你与它更早做
 - **检索**：`recall` 按字面关键词在摘要与正文里查，分页返回；命中的消息可用
   `recall_message` 按 `r12/m3` 展开全文。
 - **删除**：`forget` 永久删除指定 Run，留下一条极简墓碑（序号不复用）。
+- **启动索引**：主 Agent 的新会话开始时，把当前目录最近 10 条 Run 收成一段索引注入上下文，只此一次。索引是历史证据，不是当前指令，也不代表当时任务成功；要看细节仍用 `recall` / `recall_message`。子代理、恢复已有会话、清空和压缩不注入。当前目录不够 10 条时不拿其他目录补，一条都没有就不注入。
 
 ## 模型工具
 
@@ -100,6 +101,9 @@ dsh --profile <profile> --dump-config | grep -B2 -A6 dsh-recall
 | `dreamThreshold` | `30` | 自动复盘门槛（1–1000），每批最多 30 条 |
 | `dreamProvider` / `dreamModel` | `""` | 同时留空使用宿主默认路由；同时填写可指定复盘模型 |
 | `dreamMemoryDirectory` | `""` | 可选 Markdown 记忆目录；留空仅保存复盘结论 |
+| `startupRecall` | `true` | 新会话开始时向主 Agent 注入最近 Run 的索引 |
+| `startupRecallCount` | `10` | 注入条数（1–100）。不够这个数时不从其他目录补 |
+| `startupRecallScope` | `cwd` | `cwd` 只含当前工作目录；`all` 含全部目录，并在每行标出目录 |
 
 `summaryProvider` 与 `summaryModel` 都留空时，沿用当前会话的模型路由。**只填一半会
 被当作配置错误**——此时不生成摘要，只记 `summaryError`：宁可不摘要，也不猜另一半。

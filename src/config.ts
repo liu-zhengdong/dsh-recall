@@ -7,6 +7,10 @@ import Schema from "@deepseek-ai/schemastery";
  */
 export const DEFAULT_OVERVIEW_LIMIT = 200;
 export const MAX_OVERVIEW_LIMIT = 2000;
+export const DEFAULT_STARTUP_RECALL_COUNT = 10;
+export const MAX_STARTUP_RECALL_COUNT = 100;
+
+export type StartupRecallScope = "cwd" | "all";
 
 export interface PluginConfig {
   overviewLimit: number;
@@ -18,6 +22,12 @@ export interface PluginConfig {
   dreamProvider: string;
   dreamModel: string;
   dreamMemoryDirectory: string;
+  /** 新会话开始时是否把最近 Run 的索引注入主 Agent。默认开。 */
+  startupRecall: boolean;
+  /** 注入条数。默认 10。 */
+  startupRecallCount: number;
+  /** `cwd` 只含当前目录；`all` 含全部目录。默认 `cwd`。 */
+  startupRecallScope: StartupRecallScope;
 }
 
 export const Config = Schema.object({
@@ -46,6 +56,20 @@ export const Config = Schema.object({
   dreamModel: Schema.string().default("").description("复盘模型名；需与提供方同时填写").volatile(),
   dreamMemoryDirectory: Schema.string().default("")
     .description("可选 Markdown 记忆目录；留空只保存复盘结果，不依赖其他记忆插件").volatile(),
+  startupRecall: Schema.boolean()
+    .default(true)
+    .description("新会话开始时，把最近 Run 的索引注入主 Agent；续接、清空、压缩不重复注入")
+    .volatile(),
+  startupRecallCount: Schema.number()
+    .default(DEFAULT_STARTUP_RECALL_COUNT)
+    .min(1)
+    .max(MAX_STARTUP_RECALL_COUNT)
+    .description("启动时注入的 Run 条数")
+    .volatile(),
+  startupRecallScope: Schema.union([Schema.const("cwd"), Schema.const("all")])
+    .default("cwd")
+    .description("启动注入的范围：cwd 只含当前工作目录，all 含全部目录")
+    .volatile(),
 });
 
 /** cosmokit 的 volatile 引用：schemastery `.volatile()` 字段的运行时形状。 */
@@ -99,7 +123,26 @@ export function normalizeConfig(config: Partial<PluginConfig>): PluginConfig {
     dreamProvider: stringValue(config.dreamProvider),
     dreamModel: stringValue(config.dreamModel),
     dreamMemoryDirectory: stringValue(config.dreamMemoryDirectory),
+    startupRecall: liveValue(config.startupRecall) !== false,
+    startupRecallCount: countValue(config.startupRecallCount),
+    startupRecallScope: scopeValue(config.startupRecallScope),
   };
+}
+
+function countValue(field: number | undefined): number {
+  const value = liveValue(field);
+  return typeof value === "number" &&
+    Number.isSafeInteger(value) &&
+    value >= 1 &&
+    value <= MAX_STARTUP_RECALL_COUNT
+    ? value
+    : DEFAULT_STARTUP_RECALL_COUNT;
+}
+
+/** 只认 `all`；缺省、空串和其他写法都回到当前目录。 */
+function scopeValue(field: StartupRecallScope | undefined): StartupRecallScope {
+  const value = liveValue(field);
+  return typeof value === "string" && value.trim() === "all" ? "all" : "cwd";
 }
 
 function stringValue(field: string | undefined): string {
