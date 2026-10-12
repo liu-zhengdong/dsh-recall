@@ -25,6 +25,7 @@ import { createDreamTools } from "./dream/tools.ts";
 import type {
   AgentsLike,
   SessionsLike,
+  DefaultModelLike,
   CommandInvocationLike,
   CommandResultLike,
   CommandsLike,
@@ -210,11 +211,20 @@ async function start(
     limit: () => current().overviewLimit,
     enabled: () => !current().noSummary && llm !== undefined,
   });
+  const defaultModel = service<DefaultModelLike>(ctx, "agentDefaultModel");
   const dream = new DreamEngine({
     host: {
       agents: service<AgentsLike>(ctx, "agents"),
       sessions: service<SessionsLike>(ctx, "sessions"),
       sessionQuery: query,
+      defaultModel: defaultModel
+        ? () => {
+            const selection = defaultModel.currentSelection();
+            return selection.provider && selection.model
+              ? { provider: selection.provider, model: selection.model }
+              : undefined;
+          }
+        : undefined,
       logger,
     },
     current,

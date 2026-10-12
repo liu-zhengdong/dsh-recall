@@ -3,7 +3,7 @@ import { basename, isAbsolute, resolve, win32 } from "node:path";
 import { homedir } from "node:os";
 import type { PluginConfig } from "../config.ts";
 import type { RunRecord } from "../domain.ts";
-import type { AgentHandleLike, AgentsLike, LoggerLike, SessionHeaderLike, SessionLike, SessionEventLike, SessionQueryLike, SessionsLike, ToolsLike } from "../dsh.ts";
+import type { AgentHandleLike, AgentsLike, LoggerLike, ModelRouteLike, SessionHeaderLike, SessionLike, SessionEventLike, SessionQueryLike, SessionsLike, ToolsLike } from "../dsh.ts";
 import type { Archive } from "../find.ts";
 import { object } from "../content.ts";
 import { DREAM_BATCH_SIZE, DREAM_MIN_INTERVAL_MS, DREAM_TIMEOUT_MS, dreamSubmissionSchema, type DreamBatchRun, type DreamJob, type DreamSubmission } from "./domain.ts";
@@ -14,6 +14,8 @@ export interface DreamHost {
   agents?: AgentsLike;
   sessions?: SessionsLike;
   sessionQuery: SessionQueryLike;
+  /** 宿主默认模型路由；dreamProvider/dreamModel 留空时兜底。 */
+  defaultModel?: () => ModelRouteLike | undefined;
   logger?: LoggerLike;
 }
 export interface DreamEngineOptions {
@@ -331,14 +333,26 @@ export class DreamEngine {
   }
 
   private async launch(active: Active, agents: AgentsLike, job: DreamJob, config: PluginConfig): Promise<void> {
+    // 直接调 agents.create 绕过 API session controller，没有 agent/request
+    // waterfall 兜底默认模型；留空配置时必须自己解析出路由。
+    const route = config.dreamProvider && config.dreamModel
+      ? { provider: config.dreamProvider, model: config.dreamModel }
+      : this.options.host.defaultModel?.();
+    if (!route) throw new Error("未配置复盘模型，且宿主没有可用的默认模型");
     const create = () => agents.create({
       sessionId: job.sessionId, meta: { cwd: job.cwd }, signal: active.controller.signal,
-      ...(config.dreamProvider ? { agentOptions: { provider: config.dreamProvider, model: config.dreamModel } } : {}),
+      agentOptions: { provider: route.provider, model: route.model },
       setup: (ctx, agent) => {
         const tools = ctx.get("tools") as ToolsLike | undefined;
         if (!tools?.restrict) throw new Error("宿主缺少工具范围限制，不能安全启动复盘");
         tools.restrict({ allow: ["recall", "recall_message", "dream", "dream_complete", "dream_memory"] });
-        agent.session.append?.("session/title", { title: job.title });
+        // session/title 必须带 messageSeqs 与 source，
+        // 否则会话日志校验失败（title messageSeqs requires an array）。
+        agent.session.append?.("session/title", {
+          title: job.title,
+          messageSeqs: [],
+          source: { kind: "user" },
+        });
       },
     });
     active.handle = await (agents.withoutInitiator ? agents.withoutInitiator(create) : create());
