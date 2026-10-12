@@ -135,16 +135,32 @@ export interface AgentsLike {
         sessionId: string;
         meta: {
             cwd: string;
+            agentPreset?: string;
         };
         signal?: AbortSignal;
         agentOptions?: {
             provider: string;
             model: string;
         };
-        setup?: (ctx: PluginContextLike, agent: DreamAgentLike) => void;
+        setup?: (ctx: PluginContextLike, agent: DreamAgentLike) => void | Promise<void>;
     }): Promise<AgentHandleLike>;
     get?(id: string): DreamAgentLike | undefined;
     withoutInitiator?<T>(operation: () => T): T;
+}
+/** 一次 preset 保留租约：create 期间保住该 revision，用完释放。 */
+export interface AgentPresetLeaseLike {
+    readonly key: string;
+    [Symbol.asyncDispose](): Promise<void>;
+}
+/** 宿主 agentPresets 服务的最小面。id 留空表示当前默认 preset。 */
+export interface AgentPresetsLike {
+    resolve(id?: string): Promise<{
+        id: string;
+    }>;
+    acquireScope(id?: string): Promise<AgentPresetLeaseLike>;
+    mount(ctx: PluginContextLike, id?: string): Promise<{
+        id: string;
+    }>;
 }
 export interface SessionsLike {
     get(id: string): SessionLike | undefined;

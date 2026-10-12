@@ -24,6 +24,7 @@ import { DreamStore } from "./dream/store.ts";
 import { createDreamTools } from "./dream/tools.ts";
 import type {
   AgentsLike,
+  AgentPresetsLike,
   SessionsLike,
   DefaultModelLike,
   CommandInvocationLike,
@@ -217,6 +218,7 @@ async function start(
       agents: service<AgentsLike>(ctx, "agents"),
       sessions: service<SessionsLike>(ctx, "sessions"),
       sessionQuery: query,
+      agentPresets: () => service<AgentPresetsLike>(ctx, "agentPresets"),
       defaultModel: defaultModel
         ? () => {
             const selection = defaultModel.currentSelection();

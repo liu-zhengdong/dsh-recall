@@ -1,6 +1,6 @@
 import type { PluginConfig } from "../config.ts";
 import type { RunRecord } from "../domain.ts";
-import type { AgentsLike, LoggerLike, ModelRouteLike, SessionLike, SessionEventLike, SessionQueryLike, SessionsLike } from "../dsh.ts";
+import type { AgentPresetsLike, AgentsLike, LoggerLike, ModelRouteLike, SessionLike, SessionEventLike, SessionQueryLike, SessionsLike } from "../dsh.ts";
 import type { Archive } from "../find.ts";
 import { type DreamJob } from "./domain.ts";
 import { DreamStore } from "./store.ts";
@@ -8,6 +8,12 @@ export interface DreamHost {
     agents?: AgentsLike;
     sessions?: SessionsLike;
     sessionQuery: SessionQueryLike;
+    /**
+     * 宿主 preset 注册表，惰性读取（apply 时兄弟插件可能还没激活）。
+     * 复盘会话自己建会话，拿不到宿主给普通会话挂的 preset，必须在这里自己补上；
+     * 缺这个服务时复盘会话只有宿主层工具，没有 bash 与文件工具。
+     */
+    agentPresets?: () => AgentPresetsLike | undefined;
     /** 宿主默认模型路由；dreamProvider/dreamModel 留空时兜底。 */
     defaultModel?: () => ModelRouteLike | undefined;
     logger?: LoggerLike;

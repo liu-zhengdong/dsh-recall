@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { basename, isAbsolute, win32 } from "node:path";
 import type { PluginConfig } from "../config.ts";
 import type { RunRecord } from "../domain.ts";
-import type { AgentHandleLike, AgentsLike, LoggerLike, ModelRouteLike, SessionHeaderLike, SessionLike, SessionEventLike, SessionQueryLike, SessionsLike } from "../dsh.ts";
+import type { AgentHandleLike, AgentPresetsLike, AgentsLike, LoggerLike, ModelRouteLike, SessionHeaderLike, SessionLike, SessionEventLike, SessionQueryLike, SessionsLike } from "../dsh.ts";
 import type { Archive } from "../find.ts";
 import { object } from "../content.ts";
 import { DREAM_BATCH_SIZE, DREAM_MIN_INTERVAL_MS, DREAM_TIMEOUT_MS, dreamSubmissionSchema, type DreamBatchRun, type DreamJob, type DreamSubmission } from "./domain.ts";
@@ -13,6 +13,12 @@ export interface DreamHost {
   agents?: AgentsLike;
   sessions?: SessionsLike;
   sessionQuery: SessionQueryLike;
+  /**
+   * 宿主 preset 注册表，惰性读取（apply 时兄弟插件可能还没激活）。
+   * 复盘会话自己建会话，拿不到宿主给普通会话挂的 preset，必须在这里自己补上；
+   * 缺这个服务时复盘会话只有宿主层工具，没有 bash 与文件工具。
+   */
+  agentPresets?: () => AgentPresetsLike | undefined;
   /** 宿主默认模型路由；dreamProvider/dreamModel 留空时兜底。 */
   defaultModel?: () => ModelRouteLike | undefined;
   logger?: LoggerLike;
@@ -337,22 +343,36 @@ export class DreamEngine {
       ? { provider: config.dreamProvider, model: config.dreamModel }
       : this.options.host.defaultModel?.();
     if (!route) throw new Error("未配置复盘模型，且宿主没有可用的默认模型");
-    const create = () => agents.create({
-      sessionId: job.sessionId, meta: { cwd: job.cwd }, signal: active.controller.signal,
-      agentOptions: { provider: route.provider, model: route.model },
-      setup: (_ctx, agent) => {
-        // 复盘会话不限制工具：维护记忆的方式由用户装了什么记忆插件决定，
-        // 任务边界写在提示词里，而不是靠工具白名单。
-        // session/title 必须带 messageSeqs 与 source，
-        // 否则会话日志校验失败（title messageSeqs requires an array）。
-        agent.session.append?.("session/title", {
-          title: job.title,
-          messageSeqs: [],
-          source: { kind: "user" },
-        });
-      },
-    });
-    active.handle = await (agents.withoutInitiator ? agents.withoutInitiator(create) : create());
+    // 复盘会话自己建会话，拿不到宿主给普通会话挂的 preset（那条路走
+    // API session controller 的 composeAgent）。这里照官方 webhook 的做法补上：
+    // 先 resolve 出 id、用租约保住这次 revision、再在 setup 里挂到 agent 上下文。
+    // 工具全在 preset 内，不挂就没有 bash 与读写文件的能力。
+    const presets = this.options.host.agentPresets?.();
+    const preset = presets ? await presets.resolve() : undefined;
+    const lease = presets && preset ? await presets.acquireScope(preset.id) : undefined;
+    try {
+      const create = () => agents.create({
+        sessionId: job.sessionId,
+        meta: { cwd: job.cwd, ...(preset ? { agentPreset: preset.id } : {}) },
+        signal: active.controller.signal,
+        agentOptions: { provider: route.provider, model: route.model },
+        setup: async (ctx, agent) => {
+          if (presets && preset) await presets.mount(ctx, preset.id);
+          // 复盘会话不限制工具：维护记忆的方式由用户装了什么记忆插件决定，
+          // 任务边界写在提示词里，而不是靠工具白名单。
+          // session/title 必须带 messageSeqs 与 source，
+          // 否则会话日志校验失败（title messageSeqs requires an array）。
+          agent.session.append?.("session/title", {
+            title: job.title,
+            messageSeqs: [],
+            source: { kind: "user" },
+          });
+        },
+      });
+      active.handle = await (agents.withoutInitiator ? agents.withoutInitiator(create) : create());
+    } finally {
+      await lease?.[Symbol.asyncDispose]();
+    }
     if (this.closed || active.cancellation) {
       active.handle.agent.cancel({ kind: "disposed" });
       if (!this.closed) void this.enqueue(() => this.finish(active, active.cancellation ?? "interrupted", "启动时停止复盘"));
