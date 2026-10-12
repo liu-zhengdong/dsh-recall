@@ -18,7 +18,6 @@ export interface PluginConfig {
     dreamThreshold: number;
     dreamProvider: string;
     dreamModel: string;
-    dreamMemoryDirectory: string;
     /** 新会话开始时是否把最近 Run 的索引注入主 Agent。默认开。 */
     startupRecall: boolean;
     /** 注入条数。默认 10。 */
@@ -35,7 +34,6 @@ export declare const Config: Schema<Schemastery.ObjectS<NoInfer<{
     dreamThreshold: Schema<number, number, "volatile-defined">;
     dreamProvider: Schema<string, string, "volatile-defined">;
     dreamModel: Schema<string, string, "volatile-defined">;
-    dreamMemoryDirectory: Schema<string, string, "volatile-defined">;
     startupRecall: Schema<boolean, boolean, "volatile-defined">;
     startupRecallCount: Schema<number, number, "volatile-defined">;
     startupRecallScope: Schema<"cwd" | "all", "cwd" | "all", "volatile-defined">;
@@ -48,7 +46,6 @@ export declare const Config: Schema<Schemastery.ObjectS<NoInfer<{
     dreamThreshold: Schema<number, number, "volatile-defined">;
     dreamProvider: Schema<string, string, "volatile-defined">;
     dreamModel: Schema<string, string, "volatile-defined">;
-    dreamMemoryDirectory: Schema<string, string, "volatile-defined">;
     startupRecall: Schema<boolean, boolean, "volatile-defined">;
     startupRecallCount: Schema<number, number, "volatile-defined">;
     startupRecallScope: Schema<"cwd" | "all", "cwd" | "all", "volatile-defined">;

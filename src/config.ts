@@ -21,7 +21,6 @@ export interface PluginConfig {
   dreamThreshold: number;
   dreamProvider: string;
   dreamModel: string;
-  dreamMemoryDirectory: string;
   /** 新会话开始时是否把最近 Run 的索引注入主 Agent。默认开。 */
   startupRecall: boolean;
   /** 注入条数。默认 10。 */
@@ -54,8 +53,6 @@ export const Config = Schema.object({
     .description("同一工作目录积累多少条未整理记录后自动复盘").volatile(),
   dreamProvider: Schema.string().default("").description("复盘模型提供方；与模型同时留空使用宿主默认路由").volatile(),
   dreamModel: Schema.string().default("").description("复盘模型名；需与提供方同时填写").volatile(),
-  dreamMemoryDirectory: Schema.string().default("")
-    .description("可选 Markdown 记忆目录；留空只保存复盘结果，不依赖其他记忆插件").volatile(),
   startupRecall: Schema.boolean()
     .default(true)
     .description("新会话开始时，把最近 Run 的索引注入主 Agent；续接、清空、压缩不重复注入")
@@ -122,7 +119,6 @@ export function normalizeConfig(config: Partial<PluginConfig>): PluginConfig {
       ? liveValue(config.dreamThreshold)! : 30,
     dreamProvider: stringValue(config.dreamProvider),
     dreamModel: stringValue(config.dreamModel),
-    dreamMemoryDirectory: stringValue(config.dreamMemoryDirectory),
     startupRecall: liveValue(config.startupRecall) !== false,
     startupRecallCount: countValue(config.startupRecallCount),
     startupRecallScope: scopeValue(config.startupRecallScope),

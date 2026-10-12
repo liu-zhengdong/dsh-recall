@@ -219,10 +219,6 @@ export interface ToolDefinitionLike {
 }
 export interface ToolsLike {
     register(definition: unknown): () => void;
-    restrict?(filter: {
-        allow?: readonly string[];
-        deny?: readonly string[];
-    }): () => void;
 }
 export interface CommandInvocationLike {
     rawInput?: string;

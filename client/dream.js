@@ -289,19 +289,6 @@ window.__ModuleLoader__.load({
           return h(UI.Button, { key: source, variant: "ghost", size: "sm", onClick: function () { props.onRead(source); } }, source);
         }));
       }
-      function FileChange(props) {
-        var opened = React.useState(false);
-        var change = props.change;
-        return h("details", { className: "dsh-dream-change", onToggle: function (event) { opened[1](event.currentTarget.open); } },
-          h("summary", null,
-            h("svg", { className: "dsh-dream-chevron", width: 14, height: 14, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 1.6, "aria-hidden": true }, h("path", { d: "m9 5 7 7-7 7", strokeLinecap: "round", strokeLinejoin: "round" })),
-            h("span", null, change.path), h("span", { className: "dsh-dream-muted" }, change.verified ? "已核验" : "未完成核验")),
-          opened[0] ? h("div", null,
-            change.error ? h("div", { className: "dsh-dream-error", role: "alert" }, change.error) : null,
-            h(SourceLinks, { sources: change.sources, onRead: props.onRead }),
-            h("h4", null, "修改前"), h("pre", { className: "dsh-dream-body" }, change.before === null ? "（文件不存在）" : change.before || "（空文件）"),
-            h("h4", null, "修改后"), h("pre", { className: "dsh-dream-body" }, change.after === null ? "（文件不存在）" : change.after || "（空文件）")) : null);
-      }
       function DetailModal(props) {
         var detailState = React.useState({ job: null, loading: true, error: "" });
         var detail = detailState[0];
@@ -354,19 +341,17 @@ window.__ModuleLoader__.load({
           h("div", { className: "dsh-dream-muted" }, job.cwd + " · " + shortTime(job.startedAt)),
           job.error ? h("div", { className: "dsh-dream-error", role: "alert" }, job.error) : null,
           job.correctionError ? h("div", { className: "dsh-dream-error", role: "alert" }, "补充复盘失败：" + job.correctionError) : null,
-          h("h3", null, "结论"),
+          h("h3", null, "审计报告"),
           job.conclusions.length ? job.conclusions.map(function (conclusion, index) {
             return h("div", { key: index, className: "dsh-dream-conclusion" },
               h("span", { className: "dsh-dream-muted" }, { fact: "事实", inference: "推断", unverified: "待核实" }[conclusion.kind]),
               h("p", null, conclusion.text), h(SourceLinks, { sources: conclusion.sources, onRead: readEvidence }));
-          }) : h("p", null, job.noChangeReason || "尚未提交结论。"),
+          }) : h("p", null, job.noChangeReason || "尚未提交报告。"),
           h("details", { className: "dsh-dream-change" },
             h("summary", null, h("svg", { className: "dsh-dream-chevron", width: 14, height: 14, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 1.6, "aria-hidden": true }, h("path", { d: "m9 5 7 7-7 7", strokeLinecap: "round", strokeLinejoin: "round" })), "检查了 " + job.batch.length + " 条记录"),
             job.batch.map(function (run) { return h("div", { key: run.id, className: "dsh-dream-material" },
               h(UI.Button, { variant: "ghost", size: "sm", onClick: function () { readEvidence("r" + run.ordinal); } }, "r" + run.ordinal),
-              h("span", null, run.goal || "无用户文本"), h("time", { className: "dsh-dream-muted", dateTime: run.startedAt }, shortTime(run.startedAt))); })),
-          h("h3", null, "文件变化"),
-          job.changes.length ? job.changes.map(function (change, index) { return h(FileChange, { key: index, change: change, onRead: readEvidence }); }) : h("p", { className: "dsh-dream-muted" }, "没有文件修改。"));
+              h("span", null, run.goal || "无用户文本"), h("time", { className: "dsh-dream-muted", dateTime: run.startedAt }, shortTime(run.startedAt))); })));
         return h(UI.Modal, { open: true, onClose: props.onClose, title: props.summary.title || "复盘详情", closeLabel: "关闭详情", className: "dsh-dream-modal", contentClassName: "dsh-dream-modal-content",
           footer: h("div", { className: "dsh-dream-actions" },
             h(UI.Button, { variant: "ghost", size: "sm", disabled: detail.loading, onClick: loadJob }, "刷新结果"),

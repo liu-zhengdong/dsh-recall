@@ -3,8 +3,6 @@ import { z } from "zod";
 export const DREAM_BATCH_SIZE = 30;
 export const DREAM_MIN_INTERVAL_MS = 60 * 60 * 1000;
 export const DREAM_TIMEOUT_MS = 10 * 60 * 1000;
-export const DREAM_FILE_BYTES = 64 * 1024;
-export const DREAM_MAX_CHANGES = 20;
 
 const batchRunSchema = z.object({
   id: z.string(), ordinal: z.number().int().positive(), sessionId: z.string(),
@@ -21,23 +19,17 @@ export const dreamSubmissionSchema = z.object({
   conclusions: z.array(dreamConclusionSchema).max(20),
   noChangeReason: z.string().trim().max(4000).default(""),
 }).strict().refine((value) => value.conclusions.length > 0 || value.noChangeReason.length > 0,
-  "没有新增结论时必须说明原因");
+  "没有值得记的内容时必须说明原因");
 export type DreamSubmission = z.infer<typeof dreamSubmissionSchema>;
 export type DreamConclusion = z.infer<typeof dreamConclusionSchema>;
-const changeSchema = z.object({
-  path: z.string(), before: z.string().nullable(), after: z.string().nullable(),
-  sources: z.array(z.string()), at: z.string(), verified: z.boolean(), error: z.string(),
-});
-export type DreamChange = z.infer<typeof changeSchema>;
 export const dreamJobSchema = z.object({
   id: z.string(), sessionId: z.string(), cwd: z.string(), title: z.string(),
   status: z.enum(["starting", "running", "completed", "failed", "cancelled", "interrupted"]),
   startedAt: z.string(), endedAt: z.string().nullable(), error: z.string(),
   batch: z.array(batchRunSchema).min(1).max(DREAM_BATCH_SIZE), retryOf: z.string().nullable(),
-  memoryDirectory: z.string(), conclusions: z.array(dreamConclusionSchema).max(20),
+  conclusions: z.array(dreamConclusionSchema).max(20),
   noChangeReason: z.string(), submittedAt: z.string().nullable(),
   submittedTurn: z.number().int().nonnegative().nullable(),
-  changes: z.array(changeSchema).max(DREAM_MAX_CHANGES),
   draft: z.object({ submission: dreamSubmissionSchema, turn: z.number().int().nonnegative(), at: z.string() }).nullable().default(null),
   correctionError: z.string().default(""),
 });

@@ -13,7 +13,7 @@ Agent 的上下文只装得下当前会话的最近几轮。**你与它更早做
 - 每完成一个 turn 就归档一条 **Run**（起止时间、工作目录、状态、目标、摘要）。
 - `recall`、`recall_message` 和 `forget` 让 Agent **自己**回查归档。
 - `/runs` 命令让人浏览同一份归档。
-- 同一目录积累 30 条未整理 Run 后，自动启动独立复盘会话。左侧「复盘」查看过程与结果；无需安装其他记忆插件。
+- 同一目录积累 30 条未整理 Run 后，自动启动独立复盘会话：回顾这批经历、把值得长期记下的写进记忆，并留下一份可审阅的审计报告。左侧「复盘」查看过程与结果。
 
 复盘的操作与配置见 [自动复盘](docs/auto-dream.md)。
 
@@ -47,9 +47,8 @@ Agent 的上下文只装得下当前会话的最近几轮。**你与它更早做
 | `recall` | 按关键词 / Run ID / 时间 / 工作目录检索归档；命中摘要与正文，分页 |
 | `recall_message` | 按 `r3/m2` 读一条消息的全文；默认文本，`format=raw` 给原始 JSON |
 | `forget` | 在用户明确要求下批量删除 Run；先全批校验，未知 ID 整批拒绝 |
-| `dream` | 查询保存的复盘结论、固定材料范围和来源 |
-| `dream_complete` | 复盘会话提交有来源的结论；正常结束后完成 |
-| `dream_memory` | 复盘会话读写配置的 Markdown 记忆目录，记录实际前后内容 |
+| `dream` | 查询保存的审计报告、固定材料范围和来源 |
+| `dream_complete` | 复盘会话提交有来源的审计报告；正常结束后完成 |
 
 工具结果与卡片都按「历史证据」措辞——**记录已保存不等于任务成功**。
 
@@ -100,7 +99,6 @@ dsh --profile <profile> --dump-config | grep -B2 -A6 dsh-recall
 | `autoDream` | `true` | 同目录达到门槛时自动复盘，可在侧栏暂停 |
 | `dreamThreshold` | `30` | 自动复盘门槛（1–1000），每批最多 30 条 |
 | `dreamProvider` / `dreamModel` | `""` | 同时留空使用宿主默认路由；同时填写可指定复盘模型 |
-| `dreamMemoryDirectory` | `""` | 可选 Markdown 记忆目录；留空仅保存复盘结论 |
 | `startupRecall` | `true` | 新会话开始时向主 Agent 注入最近 Run 的索引。fork（会话头 `isSeeded`）和复盘会话不注入 |
 | `startupRecallCount` | `10` | 注入条数（1–100）。不够这个数时不从其他目录补 |
 | `startupRecallScope` | `cwd` | `cwd` 只含当前工作目录；`all` 含全部目录，并在每行标出目录 |
@@ -119,4 +117,4 @@ dsh --profile <profile> --dump-config | grep -B2 -A6 dsh-recall
 存储域名为 `run_archive`，后端由 profile 的 `storage-domain` 决定（默认 `json`）。
 **本插件不复制原始消息正文**：正文始终是宿主自己的会话日志，插件只在检索时回读。
 
-复盘进度与结果存于独立 `dream` 存储域。复盘会话正文也由宿主管理；可选记忆文件变化的前后内容保存在该次复盘中，供人审阅。设计与边界见 [实现设计](docs/specs/auto-dream.md)。
+复盘进度与审计报告存于独立 `dream` 存储域。复盘会话正文由宿主管理；它按上下文里的记忆约定改动的记忆文件不在本插件存储域内，审计报告会写清动了什么。设计与边界见 [实现设计](docs/specs/auto-dream.md)。

@@ -1,9 +1,8 @@
 import { randomUUID } from "node:crypto";
-import { basename, isAbsolute, resolve, win32 } from "node:path";
-import { homedir } from "node:os";
+import { basename, isAbsolute, win32 } from "node:path";
 import type { PluginConfig } from "../config.ts";
 import type { RunRecord } from "../domain.ts";
-import type { AgentHandleLike, AgentsLike, LoggerLike, ModelRouteLike, SessionHeaderLike, SessionLike, SessionEventLike, SessionQueryLike, SessionsLike, ToolsLike } from "../dsh.ts";
+import type { AgentHandleLike, AgentsLike, LoggerLike, ModelRouteLike, SessionHeaderLike, SessionLike, SessionEventLike, SessionQueryLike, SessionsLike } from "../dsh.ts";
 import type { Archive } from "../find.ts";
 import { object } from "../content.ts";
 import { DREAM_BATCH_SIZE, DREAM_MIN_INTERVAL_MS, DREAM_TIMEOUT_MS, dreamSubmissionSchema, type DreamBatchRun, type DreamJob, type DreamSubmission } from "./domain.ts";
@@ -105,7 +104,7 @@ export class DreamEngine {
           await this.store.update(job.id, { status: "interrupted", endedAt: new Date().toISOString(), error: "上次进程在复盘完成前退出" });
         } else if (job.status === "completed") {
           await this.store.advance(job.cwd, Math.max(...job.batch.map((run) => run.ordinal)));
-          if (job.draft) await this.store.update(job.id, { draft: null, correctionError: "上次修正在正常结束前中断，保留原结论" });
+          if (job.draft) await this.store.update(job.id, { draft: null, correctionError: "上次修正在正常结束前中断，保留原报告" });
         }
       }
       // 只取轻量 header 一次，按 parentSession 重建反自举归属，不回读全部正文。
@@ -306,12 +305,11 @@ export class DreamEngine {
     if (!records.length) throw new Error("没有可复盘的材料");
     const now = new Date().toISOString();
     const sessionId = randomUUID();
-    const directory = retry?.memoryDirectory ?? memoryDirectory(config.dreamMemoryDirectory);
     const job: DreamJob = {
       id: randomUUID(), sessionId, cwd, title: `${basename(cwd) || cwd} · ${records.length} 条记录`,
       status: "starting", startedAt: now, endedAt: null, error: "", batch: structuredClone(records),
-      retryOf: retry?.id ?? null, memoryDirectory: directory, conclusions: [], noChangeReason: "",
-      submittedAt: null, submittedTurn: null, changes: [], draft: null, correctionError: "",
+      retryOf: retry?.id ?? null, conclusions: [], noChangeReason: "",
+      submittedAt: null, submittedTurn: null, draft: null, correctionError: "",
     };
     const active: Active = { jobId: job.id, sessionId, controller: new AbortController() };
     this.active = active;
@@ -342,10 +340,9 @@ export class DreamEngine {
     const create = () => agents.create({
       sessionId: job.sessionId, meta: { cwd: job.cwd }, signal: active.controller.signal,
       agentOptions: { provider: route.provider, model: route.model },
-      setup: (ctx, agent) => {
-        const tools = ctx.get("tools") as ToolsLike | undefined;
-        if (!tools?.restrict) throw new Error("宿主缺少工具范围限制，不能安全启动复盘");
-        tools.restrict({ allow: ["recall", "recall_message", "dream", "dream_complete", "dream_memory"] });
+      setup: (_ctx, agent) => {
+        // 复盘会话不限制工具：维护记忆的方式由用户装了什么记忆插件决定，
+        // 任务边界写在提示词里，而不是靠工具白名单。
         // session/title 必须带 messageSeqs 与 source，
         // 否则会话日志校验失败（title messageSeqs requires an array）。
         agent.session.append?.("session/title", {
@@ -393,7 +390,6 @@ export class DreamEngine {
       return this.finish(active, interrupted ? "interrupted" : "failed", terminal?.error ?? "会话未产生可验证的正常结束事件");
     }
     if (!job.submittedAt || job.submittedTurn !== terminal.turn) return this.finish(active, "failed", "会话结束，但没有通过 dream_complete 提交本轮结果");
-    if (job.changes.some((change) => !change.verified)) return this.finish(active, "failed", "存在未核对成功的记忆写入");
     await this.finish(active, "completed", "");
   }
 
@@ -496,10 +492,4 @@ function toBatch(run: RunRecord): DreamBatchRun {
   return { id: run.id, ordinal: run.ordinal, sessionId: run.sessionId, turn: run.turn,
     startedAt: run.startedAt, endedAt: run.endedAt, status: run.status,
     goal: run.goal.slice(0, 1000), overview: run.overview?.slice(0, 2000) ?? null };
-}
-function memoryDirectory(value: string): string {
-  if (!value) return "";
-  const expanded = /^~[\\/]/u.test(value) ? resolve(homedir(), ...value.slice(2).split(/[\\/]/u)) : value;
-  if (!isAbsolute(expanded)) throw new Error("记忆目录必须是本机的绝对路径");
-  return resolve(expanded);
 }

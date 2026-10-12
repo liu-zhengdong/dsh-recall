@@ -2,8 +2,6 @@ import { z } from "zod";
 export declare const DREAM_BATCH_SIZE = 30;
 export declare const DREAM_MIN_INTERVAL_MS: number;
 export declare const DREAM_TIMEOUT_MS: number;
-export declare const DREAM_FILE_BYTES: number;
-export declare const DREAM_MAX_CHANGES = 20;
 declare const batchRunSchema: z.ZodObject<{
     id: z.ZodString;
     ordinal: z.ZodNumber;
@@ -43,16 +41,6 @@ export declare const dreamSubmissionSchema: z.ZodObject<{
 }, z.core.$strict>;
 export type DreamSubmission = z.infer<typeof dreamSubmissionSchema>;
 export type DreamConclusion = z.infer<typeof dreamConclusionSchema>;
-declare const changeSchema: z.ZodObject<{
-    path: z.ZodString;
-    before: z.ZodNullable<z.ZodString>;
-    after: z.ZodNullable<z.ZodString>;
-    sources: z.ZodArray<z.ZodString>;
-    at: z.ZodString;
-    verified: z.ZodBoolean;
-    error: z.ZodString;
-}, z.core.$strip>;
-export type DreamChange = z.infer<typeof changeSchema>;
 export declare const dreamJobSchema: z.ZodObject<{
     id: z.ZodString;
     sessionId: z.ZodString;
@@ -85,7 +73,6 @@ export declare const dreamJobSchema: z.ZodObject<{
         overview: z.ZodNullable<z.ZodString>;
     }, z.core.$strip>>;
     retryOf: z.ZodNullable<z.ZodString>;
-    memoryDirectory: z.ZodString;
     conclusions: z.ZodArray<z.ZodObject<{
         text: z.ZodString;
         kind: z.ZodEnum<{
@@ -98,15 +85,6 @@ export declare const dreamJobSchema: z.ZodObject<{
     noChangeReason: z.ZodString;
     submittedAt: z.ZodNullable<z.ZodString>;
     submittedTurn: z.ZodNullable<z.ZodNumber>;
-    changes: z.ZodArray<z.ZodObject<{
-        path: z.ZodString;
-        before: z.ZodNullable<z.ZodString>;
-        after: z.ZodNullable<z.ZodString>;
-        sources: z.ZodArray<z.ZodString>;
-        at: z.ZodString;
-        verified: z.ZodBoolean;
-        error: z.ZodString;
-    }, z.core.$strip>>;
     draft: z.ZodDefault<z.ZodNullable<z.ZodObject<{
         submission: z.ZodObject<{
             conclusions: z.ZodArray<z.ZodObject<{
@@ -180,7 +158,6 @@ export declare const dreamDomain: {
                     overview: z.ZodNullable<z.ZodString>;
                 }, z.core.$strip>>;
                 retryOf: z.ZodNullable<z.ZodString>;
-                memoryDirectory: z.ZodString;
                 conclusions: z.ZodArray<z.ZodObject<{
                     text: z.ZodString;
                     kind: z.ZodEnum<{
@@ -193,15 +170,6 @@ export declare const dreamDomain: {
                 noChangeReason: z.ZodString;
                 submittedAt: z.ZodNullable<z.ZodString>;
                 submittedTurn: z.ZodNullable<z.ZodNumber>;
-                changes: z.ZodArray<z.ZodObject<{
-                    path: z.ZodString;
-                    before: z.ZodNullable<z.ZodString>;
-                    after: z.ZodNullable<z.ZodString>;
-                    sources: z.ZodArray<z.ZodString>;
-                    at: z.ZodString;
-                    verified: z.ZodBoolean;
-                    error: z.ZodString;
-                }, z.core.$strip>>;
                 draft: z.ZodDefault<z.ZodNullable<z.ZodObject<{
                     submission: z.ZodObject<{
                         conclusions: z.ZodArray<z.ZodObject<{
