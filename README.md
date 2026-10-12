@@ -88,6 +88,22 @@ dsh --profile <profile> --dump-config | grep -B2 -A6 dsh-recall
 > `prepare`，放行键还绑 commit hash，因此不采用那条路）。改源码后跑
 > `npm run build` 并把 `lib/` 一起提交。
 
+## 发版本
+
+改完代码要一起升 `package.json` 的 `version`。不发新版本号，插件市场不会报
+更新——它先比版本号，版本相同就直接判为无更新，后面的 commit 比较不执行。
+完整机制见记忆库 `DSH插件开发.md`。
+
+流程：
+
+```bash
+npm run check && npm run build && npm test   # 三关都过
+# 升 package.json 的 version
+git add -A && git commit -m "..." && git push
+git tag v<version> && git push origin v<version>
+pnpm update dsh-recall                       # 在 profile 目录，让本机装上
+```
+
 ## 配置
 
 | 字段 | 默认 | 说明 |
