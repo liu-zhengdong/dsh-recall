@@ -116,6 +116,19 @@ export interface AgentHandleLike {
     agent: DreamAgentLike;
     dispose(): Promise<void>;
 }
+/** provider/model 路由对；reasoningEffort 等额外字段由宿主决定。 */
+export interface ModelRouteLike {
+    provider: string;
+    model: string;
+}
+/** 宿主 agentDefaultModel 服务的最小面。 */
+export interface DefaultModelLike {
+    currentSelection(): {
+        provider: string;
+        model: string;
+        reasoningEffort?: string;
+    };
+}
 export interface AgentsLike {
     root?: AgentsLike;
     create(options: {

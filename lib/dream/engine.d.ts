@@ -1,6 +1,6 @@
 import type { PluginConfig } from "../config.ts";
 import type { RunRecord } from "../domain.ts";
-import type { AgentsLike, LoggerLike, SessionLike, SessionEventLike, SessionQueryLike, SessionsLike } from "../dsh.ts";
+import type { AgentsLike, LoggerLike, ModelRouteLike, SessionLike, SessionEventLike, SessionQueryLike, SessionsLike } from "../dsh.ts";
 import type { Archive } from "../find.ts";
 import { type DreamJob } from "./domain.ts";
 import { DreamStore } from "./store.ts";
@@ -8,6 +8,8 @@ export interface DreamHost {
     agents?: AgentsLike;
     sessions?: SessionsLike;
     sessionQuery: SessionQueryLike;
+    /** 宿主默认模型路由；dreamProvider/dreamModel 留空时兜底。 */
+    defaultModel?: () => ModelRouteLike | undefined;
     logger?: LoggerLike;
 }
 export interface DreamEngineOptions {
