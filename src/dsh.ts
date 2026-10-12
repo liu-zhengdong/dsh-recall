@@ -130,7 +130,7 @@ export interface AgentsLike {
 
 /** 一次 preset 保留租约：create 期间保住该 revision，用完释放。 */
 export interface AgentPresetLeaseLike {
-  readonly key: string;
+  readonly key: object;
   [Symbol.asyncDispose](): Promise<void>;
 }
 
