@@ -755,6 +755,9 @@ window.__ModuleLoader__.load({ id: "dsh-recall", factory: function (require) {
     try { UI = require("@deepseek-ai/dsh-client-ui-primitives"); }
     catch (error) { uiError = message(error); }
     var PAGE_SIZE = 30;
+    // 等复盘会话登记进会话目录：实测窗口约 1.4 秒，留 10 秒余量。
+    var REVEAL_ATTEMPTS = 20;
+    var REVEAL_DELAY_MS = 500;
     var EMPTY_SESSIONS = { ids: [], byId: {} };
     var EMPTY_STATUSES = new Map();
     var STYLE_ID = "dsh-recall-dream-style";
@@ -986,6 +989,34 @@ window.__ModuleLoader__.load({ id: "dsh-recall", factory: function (require) {
         if (!navigation || typeof navigation.openSession !== "function") throw new Error("宿主未提供会话导航");
         navigation.openSession(id);
       }
+      /**
+       * 会话目录里找不到该 id 时报的就是这句。复盘会话由宿主直接创建，从创建到登记进
+       * 目录有一段延迟（实测约 1.4 秒），dreamRun 一返回就导航必然落进这段窗口。
+       */
+      function notListedYet(error) {
+        return /unknown session/i.test(message(error));
+      }
+      /**
+       * 等复盘会话登记进会话目录再导航。目录快照只能靠 `sessions.refresh()` 推进，
+       * 所以每轮都主动刷一次，而不是干等。
+       */
+      async function revealSession(id) {
+        var sessions = ctx.get("sessions");
+        var canProbe = Boolean(sessions && typeof sessions.refresh === "function");
+        for (var attempt = 0; attempt < REVEAL_ATTEMPTS; attempt += 1) {
+          if (disposed) return;
+          if (canProbe) {
+            try { await sessions.refresh(); } catch (error) { /* 刷新失败就退避后再试 */ }
+            if (disposed) return;
+          }
+          try { openSession(id); return; }
+          catch (error) {
+            if (!canProbe || !notListedYet(error)) throw error;
+          }
+          await new Promise(function (resolve) { setTimeout(resolve, REVEAL_DELAY_MS); });
+        }
+        throw new Error("复盘会话已创建，但会话目录一直没登记它；请在列表中手动打开 " + id);
+      }
       async function perform(method, argument) {
         if (state.operation || disposed) return;
         patch({ operation: method, error: "" });
@@ -994,7 +1025,7 @@ window.__ModuleLoader__.load({ id: "dsh-recall", factory: function (require) {
           var result = argument === undefined ? await service[method]() : await service[method](argument);
           var value = unwrap(result);
           if (disposed) return;
-          if ((method === "dreamRun" || method === "dreamRetry") && value && value.sessionId) openSession(value.sessionId);
+          if ((method === "dreamRun" || method === "dreamRetry") && value && value.sessionId) await revealSession(value.sessionId);
         } catch (error) { patch({ error: message(error) }); }
         finally { patch({ operation: "" }); await refresh(); }
       }
