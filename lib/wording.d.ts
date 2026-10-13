@@ -8,6 +8,9 @@ import type { MessageLike } from "./dsh.ts";
 export declare const NO_MATCH = "\u6CA1\u6709\u5339\u914D\u7684 Run\u3002";
 export declare const PAGE_MISSED = "\u672C\u9875\u672A\u547D\u4E2D\uFF0C\u5C1A\u6709\u5386\u53F2\u672A\u641C\u7D22\u3002";
 export declare const NO_MESSAGES = "\u5C1A\u65E0\u5DF2\u4FDD\u5B58\u7684\u6D88\u606F\u3002";
+export declare const READ_DONE = "[\u5DF2\u8BFB\u5B8C]";
+/** 分页正文末行的续页调用；模型照抄即可拿到合法游标。 */
+export declare function continuationLine(tool: "recall" | "recall_message", args: Record<string, unknown>): string;
 /** 截断到 maximum 个字符；不切开代理对，截断处加省略标记。 */
 export declare function preview(text: string, maximum: number): string;
 /** 去掉终端控制序列与控制字符，只留换行与制表。 */

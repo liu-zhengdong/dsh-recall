@@ -56,7 +56,15 @@ export type DetailResult = {
 export declare function encodeCursor(args: FindArgs | DetailArgs | {
     offset: number;
 }): string;
-export declare function decodeCursor(cursor: string): Record<string, unknown>;
+/**
+ * 解析模型传来的游标。合法形态是 `encodeCursor` 的 base64url 产物；
+ * 模型拿不到续页调用时经常自己编一个「看起来像偏移」的值（裸数字、
+ * 数字字符串、`{offset}` 形状的 JSON、甚至再包一层 base64），统一归一
+ * 成 `{offset}`，解析不出任何偏移才报错。
+ */
+export declare function decodeCursor(cursor: string): {
+    offset: number;
+};
 /** 正文按字节切页，不切开代理对。 */
 export declare function page(body: string, at: number): {
     part: string;
