@@ -13,7 +13,7 @@ Agent 的上下文只装得下当前会话的最近几轮。**你与它更早做
 - 每完成一个 turn 就归档一条 **Run**（起止时间、工作目录、状态、目标、摘要）。
 - `recall`、`recall_message` 和 `forget` 让 Agent **自己**回查归档。
 - `/runs` 命令让人浏览同一份归档。
-- 同一目录积累 30 条未整理 Run 后，自动启动独立复盘会话：回顾这批经历、把值得长期记下的写进记忆，并留下一份可审阅的审计报告。左侧「复盘」查看过程与结果。
+- 全局积累 30 条未整理 Run 后，自动启动独立复盘会话：回顾这批经历、把值得长期记下的写进记忆，并留下一份可审阅的审计报告。左侧「复盘」查看过程与结果。
 
 复盘的操作与配置见 [自动复盘](docs/auto-dream.md)。
 
@@ -112,7 +112,7 @@ pnpm update dsh-recall                       # 在 profile 目录，让本机装
 | `noSummary` | `false` | 关闭 Run 摘要；自动复盘由 `autoDream` 单独控制 |
 | `summaryProvider` | `""` | 摘要模型的 provider；与 `summaryModel` 必须同时填写 |
 | `summaryModel` | `""` | 摘要模型的 model 名 |
-| `autoDream` | `true` | 同目录达到门槛时自动复盘，可在侧栏暂停 |
+| `autoDream` | `true` | 达到全局门槛时自动复盘，可在侧栏暂停 |
 | `dreamThreshold` | `30` | 自动复盘门槛（1–1000），每批最多 30 条 |
 | `dreamProvider` / `dreamModel` | `""` | 同时留空使用宿主默认路由；同时填写可指定复盘模型 |
 | `startupRecall` | `true` | 新会话开始时向主 Agent 注入最近 Run 的索引。fork（会话头 `isSeeded`）和复盘会话不注入 |

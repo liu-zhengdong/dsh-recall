@@ -1,6 +1,8 @@
-import { createHash } from "node:crypto";
 import type { DomainFacilityLike, DomainLike, KvTableLike } from "../dsh.ts";
 import { dreamDomain, type DreamControl, type DreamCursor, type DreamJob, type DreamSession } from "./domain.ts";
+
+/** 全局单游标的固定键；旧版按目录哈希存的游标仅在迁移时读取。 */
+const GLOBAL_CURSOR_KEY = "global";
 
 /** 写入串行化；索引只在启动时建一次，当前记录更新不扫描历史。 */
 export class DreamStore {
@@ -10,7 +12,6 @@ export class DreamStore {
   private readonly sessions: KvTableLike<DreamSession>;
   private readonly ordered: string[];
   private readonly bySession = new Map<string, string>();
-  private readonly retryable = new Map<string, string>();
   private chain: Promise<unknown> = Promise.resolve();
 
   static async open(facility: DomainFacilityLike): Promise<DreamStore> {
@@ -36,10 +37,7 @@ export class DreamStore {
 
   private index(job: DreamJob): void {
     this.bySession.set(job.sessionId, job.id);
-    if (job.status === "completed") this.retryable.delete(job.cwd);
-    else if (!["starting", "running"].includes(job.status)) this.retryable.set(job.cwd, job.id);
   }
-
   get(id: string): DreamJob | undefined {
     const job = this.jobs.get(id) ?? this.jobs.get(this.bySession.get(id) ?? "");
     return job && structuredClone(job);
@@ -61,9 +59,17 @@ export class DreamStore {
   }
 
   all(): DreamJob[] { return this.ordered.flatMap((id) => this.get(id) ?? []); }
-  retry(cwd: string): DreamJob | undefined { return this.get(this.retryable.get(cwd) ?? ""); }
   control(): DreamControl { return this.controls.get("global") ?? { paused: false, lastAttempt: null }; }
-  cursor(cwd: string): number { return this.cursors.get(this.cwdKey(cwd))?.cursor ?? 0; }
+  cursor(): number {
+    const global = this.cursors.get(GLOBAL_CURSOR_KEY)?.cursor ?? 0;
+    // 旧版按目录存游标（键为目录哈希）；迁移起点取各目录最大值，旧记录留在表里不再读。
+    let best = global;
+    for (const [, value] of this.cursors.entries()) {
+      const legacy = (value as { cursor?: unknown }).cursor;
+      if (typeof legacy === "number" && legacy > best) best = legacy;
+    }
+    return best;
+  }
   roots(): DreamSession[] { return [...this.sessions.entries()].map(([, value]) => value); }
   root(sessionId: string): string | undefined { return this.sessions.get(sessionId)?.rootSessionId; }
 
@@ -98,12 +104,11 @@ export class DreamStore {
   }
 
   /** completed 记录先落盘，再推进 cursor；启动恢复补齐两次写之间的窗口。 */
-  advance(cwd: string, ordinal: number): Promise<void> {
+  advance(ordinal: number): Promise<void> {
     return this.enqueue(async () => {
-      if (ordinal > this.cursor(cwd)) await this.cursors.put(this.cwdKey(cwd), { cwd, cursor: ordinal });
+      if (ordinal > this.cursor()) await this.cursors.put(GLOBAL_CURSOR_KEY, { cursor: ordinal });
     });
   }
 
-  private cwdKey(cwd: string): string { return createHash("sha256").update(cwd).digest("hex"); }
   async drain(): Promise<void> { await this.chain; }
 }

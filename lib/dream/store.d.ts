@@ -8,7 +8,6 @@ export declare class DreamStore {
     private readonly sessions;
     private readonly ordered;
     private readonly bySession;
-    private readonly retryable;
     private chain;
     static open(facility: DomainFacilityLike): Promise<DreamStore>;
     constructor(domain: DomainLike);
@@ -24,9 +23,8 @@ export declare class DreamStore {
         hasMore: boolean;
     };
     all(): DreamJob[];
-    retry(cwd: string): DreamJob | undefined;
     control(): DreamControl;
-    cursor(cwd: string): number;
+    cursor(): number;
     roots(): DreamSession[];
     root(sessionId: string): string | undefined;
     rememberSession(sessionId: string, rootSessionId: string): Promise<void>;
@@ -34,7 +32,6 @@ export declare class DreamStore {
     put(job: DreamJob): Promise<DreamJob>;
     update(id: string, patch: Partial<DreamJob> | ((job: DreamJob) => DreamJob)): Promise<DreamJob>;
     /** completed 记录先落盘，再推进 cursor；启动恢复补齐两次写之间的窗口。 */
-    advance(cwd: string, ordinal: number): Promise<void>;
-    private cwdKey;
+    advance(ordinal: number): Promise<void>;
     drain(): Promise<void>;
 }

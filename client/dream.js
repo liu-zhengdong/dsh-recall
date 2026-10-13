@@ -27,8 +27,6 @@ window.__ModuleLoader__.load({
       ".dsh-dream-head{display:flex;justify-content:space-between;align-items:center;padding:0 4px 8px;gap:8px}",
       ".dsh-dream-actions{display:flex;gap:4px;align-items:center;flex:none}",
       ".dsh-dream-muted{color:var(--dsw-alias-label-secondary,inherit);font-size:12px;line-height:18px}",
-      ".dsh-dream-target{display:flex;align-items:center;gap:8px;margin:0 4px 8px}",
-      ".dsh-dream-target select{min-width:0;flex:1;font:inherit;color:inherit;background:var(--dsw-alias-bg-layer-1,transparent);border:1px solid var(--dsw-alias-border-primary,rgba(128,128,128,.2));border-radius:var(--dsw-radius-md,8px);padding:4px 6px}",
       ".dsh-dream-list{display:flex;flex-direction:column;gap:2px}",
       ".dsh-dream-item{border-radius:var(--dsw-radius-md,8px)}",
       ".dsh-dream-item[data-selected=true]{background:var(--dsw-alias-interactive-bg-hover,rgba(128,128,128,.08))}",
@@ -376,33 +374,24 @@ window.__ModuleLoader__.load({
         var sessions = typeof props.useSessions === "function" ? props.useSessions(function (value) { return value; }) : EMPTY_SESSIONS;
         var statuses = typeof props.useSessionStatus === "function" ? props.useSessionStatus(function (value) { return value; }) : EMPTY_STATUSES;
         var selected = currentSession(sessions);
-        var targetState = React.useState("");
-        var target = targetState[0];
-        var setTarget = targetState[1];
         var selectedDetail = React.useState(null);
         var status = view.status;
-        var pending = status && Array.isArray(status.pending) ? status.pending : [];
-        var cwd = pending.some(function (item) { return item.cwd === target; }) ? target : pending.length ? pending[0].cwd : "";
-        var count = pending.find(function (item) { return item.cwd === cwd; });
+        var pendingCount = status && typeof status.pendingCount === "number" ? status.pendingCount : 0;
         var running = Boolean(status && status.running);
         var busy = Boolean(view.operation);
         if (!UI || !UI.Button) return h("div", { className: "dsh-dream-error", role: "alert" }, "无法加载宿主控件：" + (uiError || "Button 不可用"));
         var Button = UI.Button;
         var available = Boolean(status && status.enabled);
         var pauseLabel = status && status.paused ? "恢复自动复盘" : "暂停自动复盘";
-        var info = !status ? "读取中…" : !status.enabled ? "自动复盘未启用" : status.paused ? "自动复盘已暂停" : count ? "待复盘 " + count.count + " 条" : "暂无待复盘记录";
+        var info = !status ? "读取中…" : !status.enabled ? "自动复盘未启用" : status.paused ? "自动复盘已暂停" : pendingCount ? "待复盘 " + pendingCount + " 条" : "暂无待复盘记录";
         return h("div", { className: "dsh-dream", "aria-label": "复盘" },
           h("div", { className: "dsh-dream-head" },
             h("span", { className: "dsh-dream-muted" }, info),
             h("div", { className: "dsh-dream-actions" },
               h(Button, { variant: "ghost", size: "sm", icon: h(RefreshIcon), "aria-label": "刷新复盘", title: "刷新复盘", disabled: busy, onClick: function () { patch({ error: "" }); startWatch(); refresh(); } }),
               h(Button, { variant: "ghost", size: "sm", disabled: busy || !status, onClick: function () { perform("dreamPause", !status.paused); }, title: pauseLabel }, status && status.paused ? "恢复" : "暂停"))),
-          pending.length > 1 ? h("label", { className: "dsh-dream-target" },
-            h("span", { className: "dsh-dream-muted" }, "项目"),
-            h("select", { value: cwd, disabled: busy || running, onChange: function (event) { setTarget(event.target.value); } },
-              pending.map(function (item) { return h("option", { key: item.cwd, value: item.cwd, title: item.cwd }, basename(item.cwd) + " · " + item.count + " 条"); }))) : null,
           h("div", { className: "dsh-dream-head" },
-            h(Button, { variant: "ghost", size: "sm", disabled: busy || !available || running || !count || count.count === 0, onClick: function () { perform("dreamRun", cwd); } }, "立即复盘"),
+            h(Button, { variant: "ghost", size: "sm", disabled: busy || !available || running || !pendingCount, onClick: function () { perform("dreamRun"); } }, "立即复盘"),
             running ? h(Button, { variant: "ghost", size: "sm", disabled: busy, onClick: function () { perform("dreamStop"); } }, "停止本次") : null),
           view.error ? h("div", { className: "dsh-dream-error", role: "alert" }, view.error) : null,
           view.watchError ? h("div", { className: "dsh-dream-error", role: "alert" }, view.watchError) : null,

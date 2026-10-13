@@ -130,7 +130,7 @@ window.__ModuleLoader__.load({
         descriptor("dreamStatus", []),
         descriptor("dreams", [param("args")]),
         descriptor("dreamDetail", [param("id")]),
-        descriptor("dreamRun", [param("cwd")]),
+        descriptor("dreamRun", []),
         descriptor("dreamStop", []),
         descriptor("dreamPause", [param("paused")]),
         descriptor("dreamRetry", [param("id")]),

@@ -35,11 +35,8 @@ export declare function dreamStatusView(status: DreamStatus): {
     enabled: boolean;
     paused: boolean;
     threshold: number;
-    pending: {
-        cwd: string;
-        count: number;
-        cursor: number;
-    }[];
+    pendingCount: number;
+    cursor: number;
     lastAttempt: string | null;
     sessionIds: string[];
     error: string | null;

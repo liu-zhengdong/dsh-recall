@@ -29,11 +29,8 @@ export interface DreamStatus {
     enabled: boolean;
     paused: boolean;
     threshold: number;
-    pending: {
-        cwd: string;
-        count: number;
-        cursor: number;
-    }[];
+    pendingCount: number;
+    cursor: number;
     running: DreamJob | null;
     lastAttempt: string | null;
     sessionIds: string[];
@@ -42,6 +39,7 @@ export interface DreamStatus {
 /** 一个进程一个执行者；模型生命周期不进入串行控制队列或 session/flush。 */
 export declare class DreamEngine {
     private readonly options;
+    /** 全局待整理队列，按 ordinal 升序。 */
     private readonly pending;
     private readonly knownRuns;
     private readonly headers;
@@ -90,9 +88,10 @@ export declare class DreamEngine {
         items: DreamJob[];
         hasMore: boolean;
     };
-    private choose;
+    /** 待整理总数达到门槛即可开整；手动触发门槛为 1。 */
+    private eligible;
     private schedule;
-    run(cwd?: string): Promise<DreamJob>;
+    run(): Promise<DreamJob>;
     retry(id?: string): Promise<DreamJob>;
     private begin;
     private launch;

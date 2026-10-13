@@ -50,7 +50,7 @@ export const Config = Schema.object({
     .volatile(),
   autoDream: Schema.boolean().default(true).description("自动复盘积累的执行记录").volatile(),
   dreamThreshold: Schema.number().default(30).min(1).max(1000)
-    .description("同一工作目录积累多少条未整理记录后自动复盘").volatile(),
+    .description("全局积累多少条未整理记录后自动复盘").volatile(),
   dreamProvider: Schema.string().default("").description("复盘模型提供方；与模型同时留空使用宿主默认路由").volatile(),
   dreamModel: Schema.string().default("").description("复盘模型名；需与提供方同时填写").volatile(),
   startupRecall: Schema.boolean()

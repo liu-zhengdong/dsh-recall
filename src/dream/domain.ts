@@ -34,7 +34,7 @@ export const dreamJobSchema = z.object({
   correctionError: z.string().default(""),
 });
 export type DreamJob = z.infer<typeof dreamJobSchema>;
-const cursorSchema = z.object({ cwd: z.string(), cursor: z.number().int().nonnegative() });
+const cursorSchema = z.object({ cursor: z.number().int().nonnegative() });
 export type DreamCursor = z.infer<typeof cursorSchema>;
 const controlSchema = z.object({ paused: z.boolean(), lastAttempt: z.string().nullable() });
 export type DreamControl = z.infer<typeof controlSchema>;

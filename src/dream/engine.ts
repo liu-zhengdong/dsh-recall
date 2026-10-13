@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { basename, isAbsolute, win32 } from "node:path";
+import { homedir } from "node:os";
 import type { PluginConfig } from "../config.ts";
 import type { RunRecord } from "../domain.ts";
 import type { AgentHandleLike, AgentPresetsLike, AgentsLike, LoggerLike, ModelRouteLike, SessionHeaderLike, SessionLike, SessionEventLike, SessionQueryLike, SessionsLike } from "../dsh.ts";
@@ -8,6 +8,9 @@ import { object } from "../content.ts";
 import { DREAM_BATCH_SIZE, DREAM_MIN_INTERVAL_MS, DREAM_TIMEOUT_MS, dreamSubmissionSchema, type DreamBatchRun, type DreamJob, type DreamSubmission } from "./domain.ts";
 import { dreamPrompt } from "./prompt.ts";
 import { DreamStore } from "./store.ts";
+
+/** 复盘会话的固定工作目录：批次是全局的，不再跟随某个项目。 */
+const DREAM_HOME = homedir();
 
 export interface DreamHost {
   agents?: AgentsLike;
@@ -32,7 +35,7 @@ export interface DreamEngineOptions {
 }
 export interface DreamStatus {
   enabled: boolean; paused: boolean; threshold: number;
-  pending: { cwd: string; count: number; cursor: number }[];
+  pendingCount: number; cursor: number;
   running: DreamJob | null; lastAttempt: string | null; sessionIds: string[]; error: string | null;
 }
 type Active = {
@@ -45,7 +48,8 @@ type Active = {
 /** 一个进程一个执行者；模型生命周期不进入串行控制队列或 session/flush。 */
 export class DreamEngine {
   private readonly options: DreamEngineOptions;
-  private readonly pending = new Map<string, RunRecord[]>();
+  /** 全局待整理队列，按 ordinal 升序。 */
+  private readonly pending: RunRecord[] = [];
   private readonly knownRuns = new Set<string>();
   private readonly headers = new Map<string, SessionHeaderLike>();
   private readonly origins = new Map<string, string>();
@@ -109,7 +113,7 @@ export class DreamEngine {
         if (["starting", "running"].includes(job.status)) {
           await this.store.update(job.id, { status: "interrupted", endedAt: new Date().toISOString(), error: "上次进程在复盘完成前退出" });
         } else if (job.status === "completed") {
-          await this.store.advance(job.cwd, Math.max(...job.batch.map((run) => run.ordinal)));
+          await this.store.advance(Math.max(...job.batch.map((run) => run.ordinal)));
           if (job.draft) await this.store.update(job.id, { draft: null, correctionError: "上次修正在正常结束前中断，保留原报告" });
         }
       }
@@ -225,9 +229,8 @@ export class DreamEngine {
   private addPending(record: RunRecord): void {
     if (this.knownRuns.has(record.id)) return;
     this.knownRuns.add(record.id);
-    if (this.originOf(record.sessionId) || record.ordinal <= this.store.cursor(record.cwd) || !record.cwd) return;
-    const records = this.pending.get(record.cwd) ?? [];
-    this.pending.set(record.cwd, records);
+    if (this.originOf(record.sessionId) || record.ordinal <= this.store.cursor()) return;
+    const records = this.pending;
     if (!records.length || records[records.length - 1]!.ordinal < record.ordinal) records.push(record);
     else {
       let low = 0, high = records.length;
@@ -239,7 +242,9 @@ export class DreamEngine {
     }
   }
   private removeSession(sessionId: string): void {
-    for (const [cwd, records] of this.pending) this.pending.set(cwd, records.filter((record) => record.sessionId !== sessionId));
+    const kept = this.pending.filter((record) => record.sessionId !== sessionId);
+    this.pending.length = 0;
+    this.pending.push(...kept);
   }
 
   status(): DreamStatus {
@@ -247,45 +252,37 @@ export class DreamEngine {
     const control = this.store.control();
     return {
       enabled: config.autoDream, paused: control.paused, threshold: config.dreamThreshold,
-      pending: [...this.pending].map(([cwd, records]) => ({ cwd, count: records.length, cursor: this.store.cursor(cwd) })),
+      pendingCount: this.pending.length, cursor: this.store.cursor(),
       running: this.active ? this.store.get(this.active.jobId) ?? null : null,
       lastAttempt: control.lastAttempt, sessionIds: [...this.origins.keys()], error: this.lastError,
     };
   }
   list(options: { offset?: number; limit?: number; cwd?: string } = {}): { items: DreamJob[]; hasMore: boolean } { return this.store.list(options); }
 
-  private choose(cwd: string | undefined, automatic: boolean): string | undefined {
-    const threshold = automatic ? this.options.current().dreamThreshold : 1;
-    if (cwd !== undefined) return (this.pending.get(cwd)?.length ?? 0) >= threshold ? cwd : undefined;
-    let result: string | undefined;
-    let ordinal = Infinity;
-    for (const [path, records] of this.pending) {
-      if (records.length >= threshold && records[0]!.ordinal < ordinal) { result = path; ordinal = records[0]!.ordinal; }
-    }
-    return result;
+  /** 待整理总数达到门槛即可开整；手动触发门槛为 1。 */
+  private eligible(automatic: boolean): boolean {
+    return this.pending.length >= (automatic ? this.options.current().dreamThreshold : 1);
   }
   private schedule(): void {
     if (this.timer) { clearTimeout(this.timer); this.timer = undefined; }
-    if (!this.ready || this.closed || this.active || !this.options.current().autoDream || this.store.control().paused || !this.choose(undefined, true)) return;
+    if (!this.ready || this.closed || this.active || !this.options.current().autoDream || this.store.control().paused || !this.eligible(true)) return;
     const previous = this.store.control().lastAttempt;
     const delay = previous ? Math.max(0, Date.parse(previous) + DREAM_MIN_INTERVAL_MS - Date.now()) : 0;
     this.timer = setTimeout(() => {
       this.timer = undefined;
       void this.enqueue(async () => {
         if (this.closed || this.active || !this.options.current().autoDream || this.store.control().paused) return;
-        const cwd = this.choose(undefined, true);
-        if (cwd) await this.begin(cwd, this.store.retry(cwd));
+        if (this.eligible(true)) await this.begin();
       });
     }, delay);
     this.timer.unref?.();
   }
 
-  async run(cwd?: string): Promise<DreamJob> {
+  async run(): Promise<DreamJob> {
     await this.initialize();
     return this.enqueue(async () => {
-      const selected = this.choose(cwd, false);
-      if (!selected) throw new Error("没有可复盘的未整理记录");
-      return this.begin(selected, this.store.retry(selected));
+      if (!this.eligible(false)) throw new Error("没有可复盘的未整理记录");
+      return this.begin();
     });
   }
   async retry(id?: string): Promise<DreamJob> {
@@ -293,26 +290,27 @@ export class DreamEngine {
     return this.enqueue(async () => {
       const job = id ? this.store.get(id) : this.store.list({ limit: 50 }).items.find((entry) => ["failed", "cancelled", "interrupted"].includes(entry.status));
       if (!job || !["failed", "cancelled", "interrupted"].includes(job.status)) throw new Error("没有可重试的复盘");
-      if (Math.max(...job.batch.map((run) => run.ordinal)) <= this.store.cursor(job.cwd)) throw new Error("这批记录已经由后续复盘整理完成");
-      return this.begin(job.cwd, job);
+      if (Math.max(...job.batch.map((run) => run.ordinal)) <= this.store.cursor()) throw new Error("这批记录已经由后续复盘整理完成");
+      return this.begin(job);
     });
   }
 
-  private async begin(cwd: string, retry?: DreamJob): Promise<DreamJob> {
+  private async begin(retry?: DreamJob): Promise<DreamJob> {
     if (this.closed) throw new Error("Dream 已关闭");
     if (this.active) throw new Error("已有一次复盘正在运行");
-    if (!isAbsolute(cwd) && !win32.isAbsolute(cwd)) throw new Error("复盘工作目录必须是绝对路径");
     const agents = this.options.host.agents?.root ?? this.options.host.agents;
     if (!agents) throw new Error("宿主缺少 agents 服务，无法创建独立复盘会话");
     const config = this.options.current();
     if ((config.dreamProvider === "") !== (config.dreamModel === "")) throw new Error("复盘提供方和模型必须同时填写或同时留空");
     if (this.timer) { clearTimeout(this.timer); this.timer = undefined; }
-    const records = retry?.batch ?? this.pending.get(cwd)?.slice(0, DREAM_BATCH_SIZE).map(toBatch) ?? [];
+    const records = retry?.batch ?? this.pending.slice(0, DREAM_BATCH_SIZE).map(toBatch);
     if (!records.length) throw new Error("没有可复盘的材料");
     const now = new Date().toISOString();
     const sessionId = randomUUID();
+    const first = records[0]!;
+    const last = records[records.length - 1]!;
     const job: DreamJob = {
-      id: randomUUID(), sessionId, cwd, title: `${basename(cwd) || cwd} · ${records.length} 条记录`,
+      id: randomUUID(), sessionId, cwd: DREAM_HOME, title: `r${first.ordinal}–r${last.ordinal} · ${records.length} 条记录`,
       status: "starting", startedAt: now, endedAt: null, error: "", batch: structuredClone(records),
       retryOf: retry?.id ?? null, conclusions: [], noChangeReason: "",
       submittedAt: null, submittedTurn: null, draft: null, correctionError: "",
@@ -420,8 +418,10 @@ export class DreamEngine {
     const job = await this.store.update(active.jobId, { status, error, endedAt: new Date().toISOString() });
     if (status === "completed") {
       const ordinal = Math.max(...job.batch.map((run) => run.ordinal));
-      await this.store.advance(job.cwd, ordinal);
-      this.pending.set(job.cwd, (this.pending.get(job.cwd) ?? []).filter((run) => run.ordinal > ordinal));
+      await this.store.advance(ordinal);
+      const kept = this.pending.filter((run) => run.ordinal > ordinal);
+      this.pending.length = 0;
+      this.pending.push(...kept);
     }
     // 不 dispose 已发布句柄：保留正常宿主会话，用户可以继续纠正与查看轨迹。
     this.active = undefined;

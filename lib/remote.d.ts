@@ -36,7 +36,7 @@ export declare class RecallRemoteService {
     dreamStatus(): unknown;
     dreams(args: unknown): unknown;
     dreamDetail(id: unknown): unknown;
-    dreamRun(cwd: unknown): Promise<unknown>;
+    dreamRun(): Promise<unknown>;
     dreamStop(): Promise<unknown>;
     dreamPause(paused: unknown): Promise<unknown>;
     dreamRetry(id: unknown): Promise<unknown>;

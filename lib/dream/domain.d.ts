@@ -105,7 +105,6 @@ export declare const dreamJobSchema: z.ZodObject<{
 }, z.core.$strip>;
 export type DreamJob = z.infer<typeof dreamJobSchema>;
 declare const cursorSchema: z.ZodObject<{
-    cwd: z.ZodString;
     cursor: z.ZodNumber;
 }, z.core.$strip>;
 export type DreamCursor = z.infer<typeof cursorSchema>;
@@ -191,7 +190,6 @@ export declare const dreamDomain: {
         };
         cursors: {
             valueSchema: z.ZodObject<{
-                cwd: z.ZodString;
                 cursor: z.ZodNumber;
             }, z.core.$strip>;
         };

@@ -112,9 +112,8 @@ export class RecallRemoteService {
     return structured(job);
   }
 
-  async dreamRun(cwd: unknown) {
-    if (cwd !== undefined && typeof cwd !== "string") throw new Error("cwd 必须是目录字符串");
-    return structured(dreamSummary(await this.needDream().run(cwd as string | undefined)));
+  async dreamRun() {
+    return structured(dreamSummary(await this.needDream().run()));
   }
 
   async dreamStop() {

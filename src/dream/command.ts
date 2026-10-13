@@ -13,7 +13,7 @@ export function registerDreamCommand(commands: CommandsLike | undefined, engine:
         const input = (invocation.rawInput ?? "").trim();
         const [action = "status", ...rest] = input.split(/\s+/);
         if (action === "run") {
-          const job = await value.run(invocation.agent?.session?.header?.cwd);
+          const job = await value.run();
           return { kind: "success", text: `已启动复盘：${job.id}。打开「复盘」页签查看会话。` };
         }
         if (action === "stop") {
@@ -33,11 +33,10 @@ export function registerDreamCommand(commands: CommandsLike | undefined, engine:
         if (action !== "status" && action !== "")
           return { kind: "error", text: "用法：/dream status | run | stop | pause | resume | retry <ID>" };
         const status = value.status();
-        const pending = status.pending.map((item) => `${item.cwd}：${item.count} 条待整理`).join("\n");
         return { kind: "success", text: [
           `自动复盘：${status.enabled && !status.paused ? "开启" : "暂停"}；门槛 ${status.threshold} 条。`,
           status.running ? `正在复盘：${status.running.id}` : "当前没有运行中的复盘。",
-          pending || "没有待整理记录。",
+          `待整理 ${status.pendingCount} 条。`,
           status.error ? `错误：${status.error}` : "",
         ].filter(Boolean).join("\n") };
       } catch (error) {
