@@ -5,7 +5,7 @@
  * 会话日志，`foldRuns` 按 turn 切分。每次调用都现读，不缓存 —— 归档条目本身
  * 是索引，正文是事实来源。
  */
-import { messagePreview, messageText, object, searchText } from "./content.ts";
+import { messagePreview, messageText, searchText } from "./content.ts";
 import type { SessionQueryLike } from "./dsh.ts";
 import { foldRuns, type RunBoundary, type RunMessage } from "./events.ts";
 import {
@@ -15,7 +15,7 @@ import {
   type ParsedQuery,
 } from "./query.ts";
 import type { RunRecord, RunStore } from "./store.ts";
-import { clean, NO_MATCH, NO_MESSAGES, overviewLine, PAGE_MISSED, preview } from "./wording.ts";
+import { clean, continuationLine, NO_MATCH, NO_MESSAGES, overviewLine, PAGE_MISSED, preview, READ_DONE } from "./wording.ts";
 
 /** 单页正文预算（UTF-8 字节）。 */
 export const OUTPUT_BYTES = 12_000;
@@ -78,15 +78,58 @@ export function encodeCursor(
   return Buffer.from(JSON.stringify(args), "utf8").toString("base64url");
 }
 
-export function decodeCursor(cursor: string): Record<string, unknown> {
-  try {
-    const value: unknown = JSON.parse(
-      Buffer.from(cursor, "base64url").toString("utf8"),
-    );
-    return object(value);
-  } catch {
+/**
+ * 解析模型传来的游标。合法形态是 `encodeCursor` 的 base64url 产物；
+ * 模型拿不到续页调用时经常自己编一个「看起来像偏移」的值（裸数字、
+ * 数字字符串、`{offset}` 形状的 JSON、甚至再包一层 base64），统一归一
+ * 成 `{offset}`，解析不出任何偏移才报错。
+ */
+export function decodeCursor(cursor: string): { offset: number } {
+  const offset = cursorOffsetOf(cursor);
+  if (offset === undefined)
     throw new Error("续页游标无法解析；请重新发起检索。");
+  return { offset };
+}
+
+/** 从各种可能形状里提取非负安全整数偏移；提取不到返回 undefined。 */
+function cursorOffsetOf(cursor: string): number | undefined {
+  const decoded = decodeJsonish(cursor);
+  return offsetOf(decoded);
+}
+
+/** base64url → JSON 失败时退回把原文当 JSON 数字或对象解析。 */
+function decodeJsonish(cursor: string): unknown {
+  try {
+    return JSON.parse(Buffer.from(cursor, "base64url").toString("utf8"));
+  } catch {
+    try {
+      return JSON.parse(cursor);
+    } catch {
+      return undefined;
+    }
   }
+}
+
+function offsetOf(value: unknown): number | undefined {
+  if (typeof value === "number") return safeOffset(value);
+  if (typeof value === "string") {
+    try {
+      return offsetOf(JSON.parse(value));
+    } catch {
+      return undefined;
+    }
+  }
+  if (value === null || typeof value !== "object" || Array.isArray(value))
+    return undefined;
+  return safeOffset((value as Record<string, unknown>).offset);
+}
+
+function safeOffset(value: unknown): number | undefined {
+  return typeof value === "number" &&
+      Number.isSafeInteger(value) &&
+      value >= 0
+    ? value
+    : undefined;
 }
 
 function date(value: string): string {
@@ -252,10 +295,12 @@ export class Archive {
 
     const text = parts.join("\n\n");
     const next = more ? this.nextPage(args, offset + window.length) : undefined;
+    const displayText =
+      (text !== "" ? text : more ? PAGE_MISSED : NO_MATCH) +
+      (next !== undefined ? `\n\n${continuationLine("recall", next)}` : "");
     return {
       text,
-      displayText:
-        text !== "" ? text : more ? PAGE_MISSED : NO_MATCH,
+      displayText,
       ...(next !== undefined ? { next } : {}),
       choices,
     };
@@ -269,7 +314,6 @@ export class Archive {
       cursor: encodeCursor({ offset }),
     };
   }
-
   /** 在正文里找命中位置，返回可读的命中行。 */
   private matchContent(
     record: RunRecord,
@@ -307,14 +351,16 @@ export class Archive {
     );
     const text = parts.join("\n\n");
     const next = more ? this.nextPage(args, offset) : undefined;
+    const displayText =
+      (records.length > 0
+        ? text
+        : args.query === undefined
+          ? `当前范围还没有 Run。开始对话后会自动记录${args.cwd === undefined ? "。" : "；省略 cwd 可查看全库。"}`
+          : NO_MATCH) +
+      (next !== undefined ? `\n\n${continuationLine("recall", next)}` : "");
     return {
       text,
-      displayText:
-        records.length > 0
-          ? text
-          : args.query === undefined
-            ? `当前范围还没有 Run。开始对话后会自动记录${args.cwd === undefined ? "。" : "；省略 cwd 可查看全库。"}`
-            : NO_MATCH,
+      displayText,
       ...(next !== undefined ? { next } : {}),
       choices,
     };
@@ -355,14 +401,19 @@ export class Archive {
       });
     }
     const body = lines.join("\n\n");
-    const next =
+    const nextArgs: FindArgs | undefined =
       index < boundary.messages.length
-        ? { id: args.id as string, cursor: encodeCursor({ offset: index }) }
+        ? { id: args.id as string, limit: args.limit, cursor: encodeCursor({ offset: index }) }
         : undefined;
+    const displayText =
+      (body === "" ? NO_MESSAGES : body) +
+      (nextArgs !== undefined
+        ? `\n\n${continuationLine("recall", nextArgs)}`
+        : `\n${READ_DONE}`);
     return {
       text: body,
-      displayText: body === "" ? NO_MESSAGES : body,
-      ...(next ? { next: { ...args, cursor: next.cursor } } : {}),
+      displayText,
+      ...(nextArgs ? { next: nextArgs } : {}),
       choices: boundary.messages.map((entry) => ({
         id: `r${record.ordinal}/m${entry.position}`,
         label: `${entry.role}${entry.toolName ? ` ${entry.toolName}` : ""}`,
@@ -372,13 +423,8 @@ export class Archive {
   }
 
   private cursorOffset(cursor: string): number {
-    const value = decodeCursor(cursor);
-    const offset = value.offset;
-    return typeof offset === "number" && Number.isSafeInteger(offset) && offset >= 0
-      ? offset
-      : 0;
+    return decodeCursor(cursor).offset;
   }
-
   /** 读取一条消息的全文，按 12KB 分页。 */
   async detail(args: DetailArgs): Promise<DetailResult> {
     const { record, entry } = await this.resolveMessage(args.id);
@@ -401,7 +447,7 @@ export class Archive {
       end < body.length
         ? { id: args.id, ...(raw ? { format: "raw" as const } : {}), cursor: encodeCursor({ offset: end }) }
         : undefined;
-    const text = `${args.id} · ${role} · ${format}\n正文位于分隔线之间，按顺序拼接各页即可还原。\n---\n${part}\n---\n${next ? `继续：recall_message(${JSON.stringify(next)})` : "[已读完]"}`;
+    const text = `${args.id} · ${role} · ${format}\n正文位于分隔线之间，按顺序拼接各页即可还原。\n---\n${part}\n---\n${next ? continuationLine("recall_message", next) : READ_DONE}`;
     return { text, ...(next ? { next } : {}), body: part, role };
   }
 
