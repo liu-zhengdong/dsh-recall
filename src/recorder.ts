@@ -23,6 +23,8 @@ export type RecorderOptions = {
     sessionId: string,
     turn: number,
   ) => Promise<RunBoundary | undefined>;
+  /** 返回 true 的会话不归档：它的过程另有专用存储，不需要二次归档。 */
+  skipSession?: (sessionId: string) => boolean;
   logger?: LoggerLike;
   /** 归档完成后回调（用于排队摘要）。 */
   onArchived?: (record: RunRecord, boundary: RunBoundary) => void;
@@ -31,6 +33,7 @@ export type RecorderOptions = {
 export class RunRecorder {
   private readonly store: RunStore;
   private readonly loadBoundary: RecorderOptions["loadBoundary"];
+  private readonly skipSession: RecorderOptions["skipSession"];
   private readonly logger: LoggerLike | undefined;
   private readonly onArchived: RecorderOptions["onArchived"];
   private readonly controller = new AbortController();
@@ -42,6 +45,7 @@ export class RunRecorder {
   constructor(options: RecorderOptions) {
     this.store = options.store;
     this.loadBoundary = options.loadBoundary;
+    this.skipSession = options.skipSession;
     this.logger = options.logger;
     this.onArchived = options.onArchived;
   }
@@ -63,7 +67,7 @@ export class RunRecorder {
     if (this.closed) return;
     if (event.type !== "turn/end") return;
     const sessionId = typeof session.id === "string" ? session.id : "";
-    if (sessionId === "") return;
+    if (sessionId === "" || this.skipSession?.(sessionId)) return;
     const turn = Number((event.data as { turn?: unknown } | undefined)?.turn);
     if (!Number.isSafeInteger(turn) || turn < 0) return;
     const cwd = session.header?.cwd ?? "";

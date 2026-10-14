@@ -1,6 +1,6 @@
 {
   "name": "dsh-recall",
-  "version": "0.2.7",
+  "version": "0.2.8",
   "description": "把 DSH 的每个 turn 归档为一条 Run：后台生成摘要，并让 Agent 检索自己的执行历史。",
   "type": "module",
   "keywords": [

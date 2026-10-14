@@ -14,6 +14,8 @@ export type RecorderOptions = {
     store: RunStore;
     /** 回读某个会话的某个 turn；日志缺失时返回 undefined。 */
     loadBoundary: (sessionId: string, turn: number) => Promise<RunBoundary | undefined>;
+    /** 返回 true 的会话不归档：它的过程另有专用存储，不需要二次归档。 */
+    skipSession?: (sessionId: string) => boolean;
     logger?: LoggerLike;
     /** 归档完成后回调（用于排队摘要）。 */
     onArchived?: (record: RunRecord, boundary: RunBoundary) => void;
@@ -21,6 +23,7 @@ export type RecorderOptions = {
 export declare class RunRecorder {
     private readonly store;
     private readonly loadBoundary;
+    private readonly skipSession;
     private readonly logger;
     private readonly onArchived;
     private readonly controller;
