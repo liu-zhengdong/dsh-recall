@@ -24,24 +24,59 @@ window.__ModuleLoader__.load({
       ".dsh-dream-tab[aria-selected=true]{color:var(--dsw-alias-label-primary,inherit);border-bottom-color:currentColor}",
       ".dsh-dream-task-tree{display:flex;flex-direction:column;flex:1;min-height:0;overflow:hidden}",
       ".dsh-dream{flex:1;overflow:auto;padding:4px 12px 12px;font-size:13px;line-height:20px}",
-      ".dsh-dream-head{display:flex;justify-content:space-between;align-items:center;padding:0 4px 8px;gap:8px}",
-      ".dsh-dream-actions{display:flex;gap:4px;align-items:center;flex:none}",
+      /* 头栏一行：左状态文案，右主操作与图标 */
+      ".dsh-dream-head{display:flex;justify-content:space-between;align-items:center;padding:2px 4px 8px;gap:8px}",
+      ".dsh-dream-info{display:flex;align-items:center;gap:6px;font-size:12px;line-height:18px;color:var(--dsw-alias-label-secondary,inherit)}",
+      ".dsh-dream-info .dsh-dream-dot{width:6px;height:6px;background:var(--dsw-alias-brand-primary,#4d6bfe)}",
+      ".dsh-dream-actions{display:flex;gap:2px;align-items:center;flex:none}",
       ".dsh-dream-muted{color:var(--dsw-alias-label-secondary,inherit);font-size:12px;line-height:18px}",
+      ".dsh-dream-chip{appearance:none;border:0;font:inherit;font-size:12px;line-height:18px;padding:3px 10px;border-radius:6px;color:var(--dsw-alias-brand-primary,#4d6bfe);background:color-mix(in srgb,var(--dsw-alias-brand-primary,#4d6bfe) 10%,transparent);cursor:pointer;transition:background-color 120ms ease-out,transform 80ms ease-out}",
+      ".dsh-dream-chip:hover:not(:disabled){background:color-mix(in srgb,var(--dsw-alias-brand-primary,#4d6bfe) 18%,transparent)}",
+      ".dsh-dream-chip:active:not(:disabled){transform:scale(.96)}",
+      ".dsh-dream-chip:disabled{opacity:.45;cursor:default}",
+      ".dsh-dream-chip-danger{color:var(--dsw-alias-state-error-primary,#e5534b);background:color-mix(in srgb,var(--dsw-alias-state-error-primary,#e5534b) 10%,transparent)}",
+      ".dsh-dream-chip-danger:hover:not(:disabled){background:color-mix(in srgb,var(--dsw-alias-state-error-primary,#e5534b) 16%,transparent)}",
+      ".dsh-dream-icon{appearance:none;border:0;background:none;width:26px;height:26px;border-radius:6px;color:var(--dsw-alias-label-secondary,inherit);display:inline-flex;align-items:center;justify-content:center;cursor:pointer;transition:background-color 120ms ease-out,transform 80ms ease-out}",
+      ".dsh-dream-icon:hover:not(:disabled){background:var(--dsw-alias-interactive-bg-hover,rgba(128,128,128,.08))}",
+      ".dsh-dream-icon:active:not(:disabled){transform:scale(.94)}",
+      ".dsh-dream-icon:disabled{opacity:.45;cursor:default}",
+      ".dsh-dream-icon svg{width:15px;height:15px}",
+      /* 暂停态：恢复按钮带浅底色，让「自动化停了」在头栏可见 */
+      ".dsh-dream-icon-resume{background:color-mix(in srgb,var(--dsw-alias-brand-primary,#4d6bfe) 10%,transparent);color:var(--dsw-alias-brand-primary,#4d6bfe)}",
+      ".dsh-dream-icon-resume:hover:not(:disabled){background:color-mix(in srgb,var(--dsw-alias-brand-primary,#4d6bfe) 18%,transparent)}",
+      ".dsh-dream-icon-spin svg{animation:dsh-dream-spin .6s ease-out}",
+      "@keyframes dsh-dream-spin{to{transform:rotate(360deg)}}",
+      /* 按天分组 */
+      ".dsh-dream-group-label{font-size:11px;font-weight:500;letter-spacing:.04em;color:var(--dsw-alias-label-tertiary,inherit);margin:14px 4px 6px}",
+      ".dsh-dream-group:first-child>.dsh-dream-group-label{margin-top:4px}",
       ".dsh-dream-list{display:flex;flex-direction:column;gap:2px}",
-      ".dsh-dream-item{border-radius:var(--dsw-radius-md,8px)}",
+      /* 行：两行结构（色点+时间+目录+状态标签 / 摘要） */
+      ".dsh-dream-item{position:relative;border-radius:var(--dsw-radius-md,8px)}",
       ".dsh-dream-item[data-selected=true]{background:var(--dsw-alias-interactive-bg-hover,rgba(128,128,128,.08))}",
-      ".dsh-dream-row{appearance:none;display:block;width:100%;text-align:left;background:none;border:0;color:inherit;font:inherit;padding:9px 10px;border-radius:var(--dsw-radius-md,8px);cursor:pointer}",
+      ".dsh-dream-row{appearance:none;display:block;width:100%;text-align:left;background:none;border:0;color:inherit;font:inherit;padding:8px 10px;border-radius:var(--dsw-radius-md,8px);cursor:pointer}",
       ".dsh-dream-row:hover{background:var(--dsw-alias-interactive-bg-hover,rgba(128,128,128,.08))}",
-      ".dsh-dream-row:focus-visible,.dsh-dream-tab:focus-visible{outline:2px solid var(--dsw-alias-brand-primary,#4d6bfe);outline-offset:-2px}",
-      ".dsh-dream-heading{display:flex;align-items:baseline;gap:8px}",
-      ".dsh-dream-title{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}",
-      ".dsh-dream-time{flex:none;font-size:11px;color:var(--dsw-alias-label-tertiary,inherit)}",
-      ".dsh-dream-meta{display:flex;gap:6px;align-items:center;margin-top:2px}",
-      ".dsh-dream-dot{width:6px;height:6px;border-radius:50%;background:currentColor;flex:none}",
-      ".dsh-dream-running{color:var(--dsw-alias-brand-primary,#4d6bfe)}",
-      ".dsh-dream-failed,.dsh-dream-error{color:var(--dsw-alias-state-error-primary,#e5534b)}",
-      ".dsh-dream-preview{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:2px}",
-      ".dsh-dream-item-actions{padding:0 10px 8px}",
+      ".dsh-dream-row:focus-visible,.dsh-dream-tab:focus-visible,.dsh-dream-icon:focus-visible,.dsh-dream-chip:focus-visible{outline:2px solid var(--dsw-alias-brand-primary,#4d6bfe);outline-offset:-2px}",
+      ".dsh-dream-l1{display:flex;align-items:center;gap:8px}",
+      ".dsh-dream-dot{width:7px;height:7px;border-radius:50%;flex:none}",
+      ".dsh-dream-time{font-size:13px;font-weight:500;font-variant-numeric:tabular-nums}",
+      ".dsh-dream-scope{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;color:var(--dsw-alias-label-secondary,inherit)}",
+      ".dsh-dream-tag{flex:none;font-size:11px;font-weight:500}",
+      ".dsh-dream-l2{margin-top:1px;padding-left:15px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;line-height:18px;color:var(--dsw-alias-label-secondary,inherit)}",
+      ".dsh-dream-item[data-status=completed] .dsh-dream-dot{background:var(--dsw-alias-state-success-primary,#2ea44f)}",
+      ".dsh-dream-item[data-status=failed] .dsh-dream-dot{background:var(--dsw-alias-state-error-primary,#e5534b)}",
+      ".dsh-dream-item[data-status=failed] .dsh-dream-tag{color:var(--dsw-alias-state-error-primary,#e5534b)}",
+      ".dsh-dream-item[data-status=failed] .dsh-dream-l2{color:var(--dsw-alias-state-error-primary,#e5534b)}",
+      ".dsh-dream-item[data-status=cancelled] .dsh-dream-dot,.dsh-dream-item[data-status=interrupted] .dsh-dream-dot{background:var(--dsw-alias-label-tertiary,#c2c7cf)}",
+      ".dsh-dream-item[data-status=cancelled] .dsh-dream-tag,.dsh-dream-item[data-status=interrupted] .dsh-dream-tag{color:var(--dsw-alias-label-tertiary,inherit)}",
+      ".dsh-dream-item[data-status=cancelled] .dsh-dream-l2,.dsh-dream-item[data-status=interrupted] .dsh-dream-l2{color:var(--dsw-alias-label-tertiary,inherit)}",
+      ".dsh-dream-item[data-status=running] .dsh-dream-dot,.dsh-dream-item[data-status=starting] .dsh-dream-dot{background:var(--dsw-alias-brand-primary,#4d6bfe)}",
+      ".dsh-dream-item[data-status=running] .dsh-dream-tag,.dsh-dream-item[data-status=starting] .dsh-dream-tag{color:var(--dsw-alias-brand-primary,#4d6bfe)}",
+      /* 悬停/键盘焦点浮出的行操作（盖行首右侧） */
+      ".dsh-dream-acts{position:absolute;right:6px;top:6px;display:flex;gap:2px;padding:1px;border-radius:6px;background:var(--dsw-alias-bg-layer-1,Canvas);opacity:0;visibility:hidden;transform:translateX(4px);transition:opacity 150ms ease-out,transform 150ms ease-out,visibility 150ms}",
+      ".dsh-dream-item:hover .dsh-dream-acts,.dsh-dream-item:focus-within .dsh-dream-acts{opacity:1;visibility:visible;transform:none}",
+      ".dsh-dream-acts .dsh-dream-icon{width:24px;height:24px}",
+      ".dsh-dream-acts .dsh-dream-icon svg{width:14px;height:14px}",
+      /* 详情弹层 */
       ".dsh-dream-modal{width:min(860px,100%);max-height:100%;font-family:" + FONT + ";font-size:13px;line-height:20px}",
       ".dsh-dream-modal-content{overflow:auto;min-height:0}",
       ".dsh-dream-detail h3,.dsh-dream-evidence h3{font-size:14px;font-weight:600;margin:16px 0 8px}",
@@ -57,9 +92,12 @@ window.__ModuleLoader__.load({
       ".dsh-dream-material{display:flex;align-items:baseline;gap:6px;margin:8px 0}.dsh-dream-material>span{flex:1;min-width:0;overflow-wrap:anywhere}.dsh-dream-material>time{flex:none}",
       ".dsh-dream-body{white-space:pre-wrap;overflow-wrap:anywhere;overflow:auto;max-height:320px;font-size:12px;line-height:18px;margin:4px 0 8px;padding:8px;border-radius:var(--dsw-radius-md,8px);background:var(--dsw-alias-bg-layer-1,transparent)}",
       ".dsh-dream-evidence{margin-top:16px;padding-top:8px;border-top:1px solid var(--dsw-alias-border-primary,rgba(128,128,128,.2))}.dsh-dream-evidence .dsh-dream-head{padding:0}.dsh-dream-evidence .dsh-dream-head h3{margin:4px 0 8px}",
-      ".dsh-dream-empty,.dsh-dream-error{padding:8px 4px;font-size:12px;line-height:18px;overflow-wrap:anywhere}",
+      ".dsh-dream-empty{padding:48px 16px;text-align:center;font-size:12px;line-height:18px;color:var(--dsw-alias-label-secondary,inherit);overflow-wrap:anywhere}",
+      ".dsh-dream-empty .dsh-dream-chip{margin-top:10px}",
+      ".dsh-dream-error{padding:8px 4px;font-size:12px;line-height:18px;overflow-wrap:anywhere;color:var(--dsw-alias-state-error-primary,#e5534b)}",
       ".dsh-dream-more{align-self:center;margin-top:8px}",
-      "@media(prefers-reduced-motion:no-preference){.dsh-dream-running .dsh-dream-dot{animation:dsh-dream-pulse 1.4s ease-in-out infinite}}",
+      "@media(prefers-reduced-motion:no-preference){.dsh-dream-item,.dsh-dream-group-label{animation:dsh-dream-enter .3s ease-out both;animation-delay:var(--d,0ms)}.dsh-dream-item[data-status=running] .dsh-dream-dot,.dsh-dream-item[data-status=starting] .dsh-dream-dot,.dsh-dream-info .dsh-dream-dot{animation:dsh-dream-pulse 1.4s ease-in-out infinite}}",
+      "@keyframes dsh-dream-enter{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}",
       "@keyframes dsh-dream-pulse{50%{opacity:.35}}",
     ].join("\n");
 
@@ -75,6 +113,25 @@ window.__ModuleLoader__.load({
       if (!value || Number.isNaN(date.getTime())) return "";
       return date.toLocaleString(undefined, { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" });
     }
+    /** 行内只留时间；日期由分组头承担。 */
+    function timeOnly(value) {
+      var date = new Date(value);
+      if (!value || Number.isNaN(date.getTime())) return "";
+      return String(date.getHours()).padStart(2, "0") + ":" + String(date.getMinutes()).padStart(2, "0");
+    }
+    function dayKey(value) {
+      var date = new Date(value);
+      if (!value || Number.isNaN(date.getTime())) return "unknown";
+      return date.getFullYear() + "-" + date.getMonth() + "-" + date.getDate();
+    }
+    function dayLabel(value) {
+      var date = new Date(value);
+      if (!value || Number.isNaN(date.getTime())) return "更早";
+      var label = (date.getMonth() + 1) + "月" + date.getDate() + "日";
+      var now = new Date();
+      if (date.getFullYear() === now.getFullYear() && date.getMonth() === now.getMonth() && date.getDate() === now.getDate()) return "今天 · " + label;
+      return label;
+    }
     function currentSession(state) {
       var byId = state.byId || {};
       return Object.keys(byId).find(function (id) {
@@ -84,6 +141,22 @@ window.__ModuleLoader__.load({
     function RefreshIcon() {
       return h("svg", { width: 16, height: 16, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 1.6, "aria-hidden": true },
         h("path", { d: "M20 11a8 8 0 1 0-2.3 6.7M20 4v7h-7", strokeLinecap: "round", strokeLinejoin: "round" }));
+    }
+    function PauseIcon() {
+      return h("svg", { width: 15, height: 15, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 1.6, "aria-hidden": true },
+        h("path", { d: "M9 5v14M15 5v14", strokeLinecap: "round" }));
+    }
+    function PlayIcon() {
+      return h("svg", { width: 15, height: 15, viewBox: "0 0 24 24", fill: "currentColor", stroke: "none", "aria-hidden": true },
+        h("path", { d: "M8 5.5v13a1 1 0 0 0 1.52.86l10.2-6.5a1 1 0 0 0 0-1.72L9.52 4.64A1 1 0 0 0 8 5.5Z" }));
+    }
+    function OpenIcon() {
+      return h("svg", { width: 14, height: 14, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 1.6, "aria-hidden": true },
+        h("path", { d: "M14 5h5v5M19 5l-8 8M9 5H6a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-3", strokeLinecap: "round", strokeLinejoin: "round" }));
+    }
+    function RetryIcon() {
+      return h("svg", { width: 14, height: 14, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 1.6, "aria-hidden": true },
+        h("path", { d: "M20 12a8 8 0 1 1-2.34-5.66M20 4v4h-4", strokeLinecap: "round", strokeLinejoin: "round" }));
     }
     function ensureStyle() {
       if (document.getElementById(STYLE_ID)) return;
@@ -350,9 +423,11 @@ window.__ModuleLoader__.load({
             job.batch.map(function (run) { return h("div", { key: run.id, className: "dsh-dream-material" },
               h(UI.Button, { variant: "ghost", size: "sm", onClick: function () { readEvidence("r" + run.ordinal); } }, "r" + run.ordinal),
               h("span", null, run.goal || "无用户文本"), h("time", { className: "dsh-dream-muted", dateTime: run.startedAt }, shortTime(run.startedAt))); })));
+        var retryable = props.summary.status === "failed" || props.summary.status === "cancelled" || props.summary.status === "interrupted";
         return h(UI.Modal, { open: true, onClose: props.onClose, title: props.summary.title || "复盘详情", closeLabel: "关闭详情", className: "dsh-dream-modal", contentClassName: "dsh-dream-modal-content",
           footer: h("div", { className: "dsh-dream-actions" },
             h(UI.Button, { variant: "ghost", size: "sm", disabled: detail.loading, onClick: loadJob }, "刷新结果"),
+            retryable ? h(UI.Button, { variant: "ghost", size: "sm", onClick: function () { props.onClose(); perform("dreamRetry", props.summary.id); } }, "重试") : null,
             h(UI.Button, { variant: "ghost", size: "sm", onClick: function () { try { openSession(props.summary.sessionId); props.onClose(); } catch (error) { setDetail(function (previous) { return Object.assign({}, previous, { error: message(error) }); }); } } }, "打开会话")) },
           detail.loading ? h("div", { className: "dsh-dream-muted", role: "status" }, "读取复盘详情…") : null,
           detail.error ? h("div", { className: "dsh-dream-error", role: "alert" }, detail.error) : null,
@@ -375,6 +450,7 @@ window.__ModuleLoader__.load({
         var statuses = typeof props.useSessionStatus === "function" ? props.useSessionStatus(function (value) { return value; }) : EMPTY_STATUSES;
         var selected = currentSession(sessions);
         var selectedDetail = React.useState(null);
+        var spinning = React.useState(false);
         var status = view.status;
         var pendingCount = status && typeof status.pendingCount === "number" ? status.pendingCount : 0;
         var running = Boolean(status && status.running);
@@ -382,38 +458,61 @@ window.__ModuleLoader__.load({
         if (!UI || !UI.Button) return h("div", { className: "dsh-dream-error", role: "alert" }, "无法加载宿主控件：" + (uiError || "Button 不可用"));
         var Button = UI.Button;
         var available = Boolean(status && status.enabled);
-        var pauseLabel = status && status.paused ? "恢复自动复盘" : "暂停自动复盘";
-        var info = !status ? "读取中…" : !status.enabled ? "自动复盘未启用" : status.paused ? "自动复盘已暂停" : pendingCount ? "待复盘 " + pendingCount + " 条" : "暂无待复盘记录";
+        var paused = Boolean(status && status.paused);
+        var pauseLabel = paused ? "恢复自动复盘" : "暂停自动复盘";
+        var info = !status ? "读取中…" : !status.enabled ? "自动复盘未启用" : running ? "正在复盘" : paused ? "自动复盘已暂停" : pendingCount ? "待复盘 " + pendingCount + " 条" : "暂无待复盘记录";
+        // 按天分组；行内只留时间，日期由组头承担。
+        var groups = [];
+        view.rows.forEach(function (job) {
+          var key = dayKey(job.startedAt);
+          var last = groups[groups.length - 1];
+          if (!last || last.key !== key) { last = { key: key, label: dayLabel(job.startedAt), items: [] }; groups.push(last); }
+          last.items.push(job);
+        });
+        // 首入逐项浮入；只播一次（React 按 key 复用节点，刷新不会重播）。
+        var staggerIndex = 0;
+        function nextDelay() { var delay = Math.min(staggerIndex * 40, 440); staggerIndex += 1; return delay + "ms"; }
         return h("div", { className: "dsh-dream", "aria-label": "复盘" },
           h("div", { className: "dsh-dream-head" },
-            h("span", { className: "dsh-dream-muted" }, info),
+            h("span", { className: "dsh-dream-info" }, running ? h("span", { className: "dsh-dream-dot", "aria-hidden": true }) : null, info),
             h("div", { className: "dsh-dream-actions" },
-              h(Button, { variant: "ghost", size: "sm", icon: h(RefreshIcon), "aria-label": "刷新复盘", title: "刷新复盘", disabled: busy, onClick: function () { patch({ error: "" }); startWatch(); refresh(); } }),
-              h(Button, { variant: "ghost", size: "sm", disabled: busy || !status, onClick: function () { perform("dreamPause", !status.paused); }, title: pauseLabel }, status && status.paused ? "恢复" : "暂停"))),
-          h("div", { className: "dsh-dream-head" },
-            h(Button, { variant: "ghost", size: "sm", disabled: busy || !available || running || !pendingCount, onClick: function () { perform("dreamRun"); } }, "立即复盘"),
-            running ? h(Button, { variant: "ghost", size: "sm", disabled: busy, onClick: function () { perform("dreamStop"); } }, "停止本次") : null),
+              running ? h("button", { className: "dsh-dream-chip dsh-dream-chip-danger", type: "button", disabled: busy, onClick: function () { perform("dreamStop"); } }, "停止")
+                : pendingCount > 0 ? h("button", { className: "dsh-dream-chip", type: "button", disabled: busy || !available, onClick: function () { perform("dreamRun"); } }, "立即复盘") : null,
+              h("button", { className: "dsh-dream-icon" + (spinning[0] ? " dsh-dream-icon-spin" : ""), type: "button", title: "刷新复盘", "aria-label": "刷新复盘", disabled: busy, onClick: function () {
+                spinning[1](true); setTimeout(function () { spinning[1](false); }, 650);
+                patch({ error: "" }); startWatch(); refresh();
+              } }, h(RefreshIcon)),
+              h("button", { className: "dsh-dream-icon" + (paused ? " dsh-dream-icon-resume" : ""), type: "button", title: pauseLabel, "aria-label": pauseLabel, disabled: busy || !status, onClick: function () { perform("dreamPause", !paused); } }, paused ? h(PlayIcon) : h(PauseIcon)))),
           view.error ? h("div", { className: "dsh-dream-error", role: "alert" }, view.error) : null,
           view.watchError ? h("div", { className: "dsh-dream-error", role: "alert" }, view.watchError) : null,
-          h("div", { className: "dsh-dream-list" }, view.rows.map(function (job) {
-            var live = statuses && statuses.get ? statuses.get(job.sessionId) : undefined;
-            var phase = job.status;
-            var label = { starting: "准备中", running: "正在复盘", completed: "已完成", failed: "失败", cancelled: "已停止", interrupted: "已中断" }[phase] || phase;
-            if (phase === "running" && live && live.pendingInteraction) label = "等待处理";
-            var preview = job.error || (job.correctionError ? "补充复盘失败：" + job.correctionError : job.preview) || job.noChangeReason || "";
-            var retryable = phase === "failed" || phase === "cancelled" || phase === "interrupted";
-            return h("div", { key: job.id, className: "dsh-dream-item", "data-selected": selected === job.sessionId },
-              h("button", { className: "dsh-dream-row", type: "button", title: job.cwd || "复盘", onClick: function () { try { openSession(job.sessionId); } catch (error) { patch({ error: message(error) }); } } },
-                h("div", { className: "dsh-dream-heading" }, h("span", { className: "dsh-dream-title" }, job.title || basename(job.cwd)), h("time", { className: "dsh-dream-time", dateTime: job.startedAt, title: job.startedAt }, shortTime(job.startedAt))),
-                h("div", { className: "dsh-dream-meta dsh-dream-muted" + (phase === "running" || phase === "starting" ? " dsh-dream-running" : phase === "failed" ? " dsh-dream-failed" : "") },
-                  h("span", { className: "dsh-dream-dot", "aria-hidden": true }), label,
-                  h("span", null, "· " + job.batchCount + " 条")),
-                preview ? h("div", { className: "dsh-dream-preview dsh-dream-muted" }, preview) : null),
-              h("div", { className: "dsh-dream-item-actions dsh-dream-actions" },
-                h(Button, { variant: "ghost", size: "sm", onClick: function () { selectedDetail[1](job); } }, "详情"),
-                retryable ? h(Button, { variant: "ghost", size: "sm", disabled: busy || running || !available, onClick: function () { perform("dreamRetry", job.id); } }, "重试") : null));
-          })),
-          !view.rows.length ? h("div", { className: "dsh-dream-empty dsh-dream-muted" }, view.phase === "mounting" || view.phase === "loading" ? "读取复盘…" : "还没有复盘。积累记录后会自动运行，也可以立即复盘。") : null,
+          groups.map(function (group) {
+            return h("section", { key: group.key, className: "dsh-dream-group" },
+              h("h2", { className: "dsh-dream-group-label", style: { "--d": nextDelay() } }, group.label),
+              h("div", { className: "dsh-dream-list" }, group.items.map(function (job) {
+                var live = statuses && statuses.get ? statuses.get(job.sessionId) : undefined;
+                var phase = job.status;
+                var label = { starting: "准备中", running: "正在复盘", completed: "", failed: "失败", cancelled: "已停止", interrupted: "已中断" }[phase];
+                if (label === undefined) label = phase;
+                if ((phase === "running" || phase === "starting") && live && live.pendingInteraction) label = "等待处理";
+                var preview = job.error || (job.correctionError ? "补充复盘失败：" + job.correctionError : job.preview) || job.noChangeReason || "";
+                var retryable = phase === "failed" || phase === "cancelled" || phase === "interrupted";
+                return h("div", { key: job.id, className: "dsh-dream-item", "data-status": phase, "data-selected": selected === job.sessionId, style: { "--d": nextDelay() } },
+                  h("button", { className: "dsh-dream-row", type: "button", onClick: function () { selectedDetail[1](job); } },
+                    h("div", { className: "dsh-dream-l1" },
+                      h("span", { className: "dsh-dream-dot", "aria-hidden": true }),
+                      h("time", { className: "dsh-dream-time", dateTime: job.startedAt }, timeOnly(job.startedAt)),
+                      h("span", { className: "dsh-dream-scope" }, basename(job.cwd) + " · " + job.batchCount + " 条"),
+                      label ? h("span", { className: "dsh-dream-tag" }, label) : null),
+                    preview ? h("div", { className: "dsh-dream-l2" }, preview) : null),
+                  h("div", { className: "dsh-dream-acts" },
+                    retryable ? h("button", { className: "dsh-dream-icon", type: "button", title: "重试", "aria-label": "重试", disabled: busy || running || !available, onClick: function (event) { event.stopPropagation(); perform("dreamRetry", job.id); } }, h(RetryIcon)) : null,
+                    h("button", { className: "dsh-dream-icon", type: "button", title: "打开会话", "aria-label": "打开会话", onClick: function (event) { event.stopPropagation(); try { openSession(job.sessionId); } catch (error) { patch({ error: message(error) }); } } }, h(OpenIcon))));
+              })));
+          }),
+          !view.rows.length ? h("div", { className: "dsh-dream-empty" },
+            view.phase === "mounting" || view.phase === "loading" ? "读取复盘…" : h(React.Fragment, null,
+              "还没有复盘。积累记录后会自动运行。",
+              available && pendingCount > 0 && !running ? h(React.Fragment, null, h("br"), h("button", { className: "dsh-dream-chip", type: "button", disabled: busy, onClick: function () { perform("dreamRun"); } }, "立即复盘")) : null)) : null,
           view.hasMore ? h(Button, { className: "dsh-dream-more", variant: "ghost", size: "sm", disabled: view.moreLoading || loading, onClick: loadMore }, view.moreLoading ? "加载中…" : "显示更多") : null,
           selectedDetail[0] ? h(DetailModal, { key: selectedDetail[0].id, summary: selectedDetail[0], onClose: function () { selectedDetail[1](null); } }) : null);
       }
