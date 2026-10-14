@@ -50,7 +50,7 @@
   },
   "scripts": {
     "build": "tsc -p tsconfig.build.json && node scripts/build-client.mjs",
-    "check": "tsc --noEmit",
+    "check": "tsc --noEmit && node scripts/build-client.mjs --check",
     "test": "node --experimental-strip-types --test tests/*.test.ts"
   },
   "engines": {
