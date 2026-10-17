@@ -77,6 +77,8 @@ dsh plugin --profile <profile> add github:liu-zhengdong/dsh-recall
 dsh plugin --profile <profile> add /abs/path/to/dsh-recall
 ```
 
+宿主版本写在 `engines.dsh`，范围是 `0.2.0-rc.2 || 0.2.1-alpha.5`。DSH `0.2.1-alpha.5` 启动时只认这个字段；`0.2.0-rc.2` 仍按同范围的 `peerDependencies` 检查。`dsh.compatibility.dshReleases` 把这两版都标成 `compatible`。
+
 包声明了 `dsh.bundle.patch`，添加后包名会被追加进该 profile 的 `dsh.profile.bundles`。
 验证层已挂上：
 

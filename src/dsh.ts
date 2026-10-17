@@ -65,8 +65,8 @@ export interface SessionLogSnapshotLike {
 /**
  * `agent/created` 的 source。
  *
- * 宿主 0.2.0-rc.2 里，`create` / `createAgent`（含 fork）发布 `startup`，
- * `resume` 发布 `resume`。`clear` 与 `compact` 在类型里，该版本没有调用点。
+ * 宿主 0.2.0-rc.2 与 0.2.1-alpha.5 里，`create` / `createAgent`（含 fork）发布 `startup`，
+ * `resume` 发布 `resume`。`clear` 与 `compact` 在类型里，这两版都没有调用点。
  */
 export type AgentCreatedSourceLike = "startup" | "resume" | "clear" | "compact";
 
