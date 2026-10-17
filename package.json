@@ -40,8 +40,7 @@
     },
     "compatibility": {
       "dshReleases": {
-        "0.2.0-rc.2": "compatible",
-        "0.2.1-alpha.5": "compatible"
+        ">=0.2.0-rc.2 <0.3.0-0": "compatible"
       }
     }
   },
@@ -52,11 +51,11 @@
   "scripts": {
     "build": "tsc -p tsconfig.build.json && node scripts/build-client.mjs",
     "check": "tsc --noEmit && node scripts/build-client.mjs --check",
-    "test": "node --experimental-strip-types --test tests/*.test.ts"
+    "test": "node scripts/install-host-gates.mjs && node --experimental-strip-types --test tests/*.test.ts"
   },
   "engines": {
     "node": "^22.19.0 || >=24.0.0",
-    "dsh": "0.2.0-rc.2 || 0.2.1-alpha.5"
+    "dsh": ">=0.2.0-rc.2 <0.3.0-0"
   },
   "dependencies": {
     "@deepseek-ai/schemastery": "~3.18.4",
@@ -64,13 +63,13 @@
   },
   "peerDependencies": {
     "@deepseek-ai/cordis": "~4.0.4",
-    "@deepseek-ai/dsh-agent": "0.2.0-rc.2 || 0.2.1-alpha.5",
-    "@deepseek-ai/dsh-commands": "0.2.0-rc.2 || 0.2.1-alpha.5",
-    "@deepseek-ai/dsh-llm": "0.2.0-rc.2 || 0.2.1-alpha.5",
-    "@deepseek-ai/dsh-session": "0.2.0-rc.2 || 0.2.1-alpha.5",
-    "@deepseek-ai/dsh-session-query": "0.2.0-rc.2 || 0.2.1-alpha.5",
-    "@deepseek-ai/dsh-storage-domain": "0.2.0-rc.2 || 0.2.1-alpha.5",
-    "@deepseek-ai/dsh-tools": "0.2.0-rc.2 || 0.2.1-alpha.5"
+    "@deepseek-ai/dsh-agent": ">=0.2.0-rc.2 <0.3.0-0",
+    "@deepseek-ai/dsh-commands": ">=0.2.0-rc.2 <0.3.0-0",
+    "@deepseek-ai/dsh-llm": ">=0.2.0-rc.2 <0.3.0-0",
+    "@deepseek-ai/dsh-session": ">=0.2.0-rc.2 <0.3.0-0",
+    "@deepseek-ai/dsh-session-query": ">=0.2.0-rc.2 <0.3.0-0",
+    "@deepseek-ai/dsh-storage-domain": ">=0.2.0-rc.2 <0.3.0-0",
+    "@deepseek-ai/dsh-tools": ">=0.2.0-rc.2 <0.3.0-0"
   },
   "devDependencies": {
     "@deepseek-ai/cordis": "4.0.5",

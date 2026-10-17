@@ -1,0 +1,8 @@
+{
+  "name": "dsh-recall-host-gate-alpha5",
+  "private": true,
+  "description": "Isolated copy of DSH 0.2.1-alpha.5 app-boot, used to call evaluatePluginCompatibility.",
+  "dependencies": {
+    "@deepseek-ai/dsh-app-boot": "0.2.1-alpha.5"
+  }
+}
