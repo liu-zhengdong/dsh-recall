@@ -77,6 +77,8 @@ dsh plugin --profile <profile> add github:liu-zhengdong/dsh-recall
 dsh plugin --profile <profile> add /abs/path/to/dsh-recall
 ```
 
+宿主版本写在 `engines.dsh`，范围是 `>=0.2.0-rc.2 <0.3.0-0`，后续 0.2.x 发行版和预发布都落在里面。DSH `0.2.0-rc.2` 与 `0.2.1-alpha.5` 的版本门都调用 `semver.satisfies(version, range, { includePrerelease: true })`。上界若写成 `<0.3.0`，`0.3.0-alpha.1` 会被算进范围；`<0.3.0-0` 才把 0.3 的预发布挡在外面。`@deepseek-ai/dsh-*` 的 peer 使用同一范围：`0.2.1-alpha.5` 只看 `engines.dsh`，`0.2.0-rc.2` 只看 peer。pnpm 10 解析 peer 时用 `satisfiesWithPrereleases`（同样打开 `includePrerelease`），所以 profile 里的 0.2.x 预发布也能满足这些 peer。`dsh.compatibility.dshReleases` 用这一范围标成 `compatible`。
+
 包声明了 `dsh.bundle.patch`，添加后包名会被追加进该 profile 的 `dsh.profile.bundles`。
 验证层已挂上：
 
